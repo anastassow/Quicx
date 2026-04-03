@@ -33,6 +33,7 @@ Worker* worker_get_idle(WorkerPool* pool);
 void    worker_set_idle(WorkerPool* pool, Worker* w);
 void    worker_set_busy(WorkerPool* pool, Worker* w);
 void    worker_remove(WorkerPool* peel, Worker* w);
+void    worker_return_idle(WorkerPool* pool, Worker* w);
 
 int workers_idle_count(WorkerPool* pool);
 int workers_busy_count(WorkerPool* pool);

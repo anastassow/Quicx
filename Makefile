@@ -1,5 +1,8 @@
 CC     = gcc
-CFLAGS = -g -std=c17 -Ipmad/include -Ipmad/include/stuctures -Iquicx/include
+CFLAGS = -g -std=c17 \
+         -Ipmad/include \
+         -Ipmad/include/stuctures \
+         -Iquicx/include
 
 PMAD_SRC = pmad/src/PMAD.c \
            pmad/src/incPMAD.c \
@@ -7,20 +10,30 @@ PMAD_SRC = pmad/src/PMAD.c \
            pmad/src/BlockHeader.c \
            pmad/src/SizeClass.c
 
-all: test_queue test_workers
+QUICX_SRC = quicx/src/queue.c \
+            quicx/src/workers.c \
+            quicx/src/dispacher.c
+
+all: test_queue test_workers test_dispatcher
 
 test_queue: quicx/src/test_queue.c quicx/src/queue.c $(PMAD_SRC)
 	$(CC) $(CFLAGS) $^ -o $@
 
-test_workers: quicx/src/test_workers.c quicx/src/workers.c $(PMAD_SRC)
+test_workers: quicx/src/test_workers.c quicx/src/workers.c \
+              quicx/src/queue.c $(PMAD_SRC)
 	$(CC) $(CFLAGS) $^ -o $@
 
-test: test_queue test_workers
+test_dispatcher: quicx/src/test_dispatcher.c $(QUICX_SRC) $(PMAD_SRC)
+	$(CC) $(CFLAGS) $^ -o $@
+
+test: all
 	@echo "--- running test_queue ---"
 	./test_queue
 	@echo "--- running test_workers ---"
 	./test_workers
+	@echo "--- running test_dispatcher ---"
+	./test_dispatcher
 	@echo "--- all tests passed ---"
 
 clean:
-	rm -f test_queue test_workers
+	rm -f test_queue test_workers test_dispatcher

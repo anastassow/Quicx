@@ -87,6 +87,11 @@ void worker_remove(WorkerPool* pool, Worker* w) {
     pmad_free(w);
 }
 
+void worker_return_idle(WorkerPool* pool, Worker* w) {
+    list_push(&pool->idle_head, &pool->idle_tail,
+              &pool->idle_count, w);
+}
+
 int workers_idle_count(WorkerPool* pool) {
     return (int)pool->idle_count;
 }
