@@ -61,9 +61,6 @@ typedef struct {
 // returns n on success, 0 on disconnect, -1 on error
 int protocol_read_exact(int fd, void* buf, int n);
 
-// write exactly n bytes — loops until all sent or error
-int protocol_write_exact(int fd, const void* buf, int n);
-
 // read one complete message from fd
 // buf must be at least PROTOCOL_HEADER_SIZE + payload_len bytes
 // returns 0 on success, 0 on disconnect, -1 on error
@@ -72,7 +69,6 @@ int protocol_read_message(int fd, uint8_t* buf, int bufsize, Message* msg);
 // sending--------------------------------------------------------------------
 
 int protocol_send_submit(int fd, const char* type, const uint8_t* payload, uint32_t payload_len);
-int protocol_send_ok(int fd, uint32_t task_id);
 int protocol_send_ok(int fd, uint32_t task_id);
 int protocol_send_error(int fd, ErrorCode code, const char* reason);
 int protocol_send_ready(int fd);
