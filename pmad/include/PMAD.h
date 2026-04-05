@@ -4,7 +4,8 @@
 #include "structures/MemoryPool.h"
 #include "structures/SizeClass.h"
 
-#define NUM_CLASSES 5
+#undef NUM_CLASSES
+#define NUM_CLASSES 6
 #define POOL_SIZE (1024 * 1024)
 #define ALIGNMENT 16
 #define MAX_SIZE_OF_SIZE_CLASS 4096 // 256 entities max

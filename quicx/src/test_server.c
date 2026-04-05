@@ -306,8 +306,8 @@ int main(void) {
     printf("using backend: %s\n", EL_BACKEND);
 
     // init PMAD
-    size_t sizes[]       = {64, 128, 256, 512, 1024};
-    size_t percentages[] = {30, 25,  20,  15,  10};
+    size_t sizes[]       = {32, 64, 128, 256, 512, 1024};
+    size_t percentages[] = {10, 25, 25,  20,  12,  8};
     pmad_init(sizes, percentages);
 
     // init queue and worker pool

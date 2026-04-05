@@ -13,11 +13,6 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 
-// connection table-----------------------------------
-// O(1) lookup
-
-static Connection connections[MAX_CONNECTIONS];
-
 // socket helpers-------------------------------------
 
 static int set_nonblocking(int fd) {
@@ -40,28 +35,19 @@ static void set_reuseaddr(int fd) {
 
 // connection managment------------------------------
 
-static void conn_init(int fd) {
-    connections[fd].fd     = fd;
-    connections[fd].type   = CONN_UNKNOWN;
-    connections[fd].worker = NULL;
-}
-
-static void conn_close(int loop_fd, int fd, WorkerPool* pool) {
-    Connection* conn = &connections[fd];
+static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
 
     // notify daemon so it can clean up worker state
     // this is from the deamon for now it is not made i will make it afterwords !!!
     daemon_handle_disconnect(conn, pool);
 
-    el_remove(loop_fd, fd);
+    el_remove(loop_fd, conn->fd);
 
-    close(fd);
+    close(conn->fd);
 
-    conn->fd     = -1;
-    conn->type   = CONN_UNKNOWN;
-    conn->worker = NULL;
+    printf("connection closed fd=%d\n", conn->fd);
 
-    printf("connection closed fd=%d\n", fd);
+    pmad_free(conn);
 }
 
 static void handle_new_connection(int loop_fd, int server_fd) {
@@ -71,23 +57,27 @@ static void handle_new_connection(int loop_fd, int server_fd) {
     int fd = accept(server_fd,
                     (struct sockaddr*)&addr,
                     &addrlen);
+
     if (fd < 0) {
         perror("accept");
         return;
     }
 
-    if (fd >= MAX_CONNECTIONS) {
-        fprintf(stderr, "too many connections fd=%d\n", fd);
+    Connection* conn = (Connection*)pmad_alloc(sizeof(Connection));
+    if (!conn) {
+        fprintf(stderr, "out of memory for connection\n");
         close(fd);
         return;
     }
 
+    conn->fd     = fd;
+    conn->type   = CONN_UNKNOWN;
+    conn->worker = NULL;
+
     set_nonblocking(fd);
     set_nodelay(fd);
 
-    conn_init(fd);
-
-    el_add(loop_fd, fd, &connections[fd]);
+    el_add(loop_fd, fd, conn);
 
     printf("new connection fd=%d from %s:%d\n",
            fd,
@@ -103,11 +93,11 @@ static void handle_readable(int loop_fd, Connection* conn,
                                 &hdr,
                                 PROTOCOL_HEADER_SIZE);
     if (r == 0) {
-        conn_close(loop_fd, conn->fd, pool);
+        conn_close(loop_fd, conn, pool);
         return;
     }
     if (r < 0) {
-        conn_close(loop_fd, conn->fd, pool);
+        conn_close(loop_fd, conn, pool);
         return;
     }
 
@@ -115,7 +105,7 @@ static void handle_readable(int loop_fd, Connection* conn,
         protocol_send_error(conn->fd,
                             ERR_VERSION_MISMATCH,
                             "bad version");
-        conn_close(loop_fd, conn->fd, pool);
+        conn_close(loop_fd, conn, pool);
         return;
     }
 
@@ -125,7 +115,7 @@ static void handle_readable(int loop_fd, Connection* conn,
         protocol_send_error(conn->fd,
                             ERR_PAYLOAD_TOO_BIG,
                             "payload too large");
-        conn_close(loop_fd, conn->fd, pool);
+        conn_close(loop_fd, conn, pool);
         return;
     }
 
@@ -144,7 +134,7 @@ static void handle_readable(int loop_fd, Connection* conn,
                                 (int)payload_len);
         if (r <= 0) {
             pmad_free(buf);
-            conn_close(loop_fd, conn->fd, pool);
+            conn_close(loop_fd, conn, pool);
             return;
         }
     }
@@ -211,14 +201,10 @@ parse_error:
     protocol_send_error(conn->fd,
                         ERR_INVALID_MSG,
                         "parse error");
+    conn_close(loop_fd, conn, pool);
 }
 
 int server_start(int port, Queue* q, WorkerPool* pool) {
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        connections[i].fd     = -1;
-        connections[i].type   = CONN_UNKNOWN;
-        connections[i].worker = NULL;
-    }
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
@@ -262,6 +248,7 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     static Connection server_conn;
     server_conn.fd   = server_fd;
     server_conn.type = CONN_UNKNOWN;
+    server_conn.worker = NULL;
 
     el_add(loop_fd, server_fd, &server_conn);
 
