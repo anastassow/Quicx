@@ -1,8 +1,11 @@
 #include "event_loop.h"
 #include <unistd.h>
 
-#ifndef __APPLE__
+#ifdef __APPLE__
+
 
 #else 
+
+
 
 #endif
