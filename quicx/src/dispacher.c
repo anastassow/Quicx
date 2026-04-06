@@ -1,6 +1,7 @@
 #include "dispacher.h"
 #include <string.h>
 #include <unistd.h>
+#include "protocol.h"
 
 void try_dispach(Queue* q, WorkerPool* pool) {
     while (1) {
@@ -16,12 +17,10 @@ void try_dispach(Queue* q, WorkerPool* pool) {
 
         worker_set_busy(pool, w);
 
-        char msg[1024];
-        int len = snprintf(msg, sizeof(msg),
-                           "TASK %u %s %.*s\n",
-                           t->id, t->type,
-                           (int)t->payload_len,
-                           (char*)t->payload);
-        write(w->fd, msg, len);
+        protocol_send_task(w->fd, t->id, t->type, t->payload, t->payload_len);
+
+        if (t->payload) pmad_free(t->payload);
+        pmad_free(t);
     }
+
 }

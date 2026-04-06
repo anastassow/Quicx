@@ -1,6 +1,8 @@
 #include "daemon.h"
 #include "protocol.h"
 #include <stdio.h>
+#include "dispacher.h"
+#include <strings.h>
 
 void daemon_inflight_add(Task* t) {
     printf("[daemon] inflight add: task_id=%u type=%s\n",
@@ -11,19 +13,37 @@ void daemon_handle_message(Connection* conn, Message* msg,
                            Queue* q, WorkerPool* pool) {
     switch (msg->type) {
 
-        case MSG_SUBMIT:
-            printf("[daemon] SUBMIT received: "
-                   "type=%s payload_len=%u fd=%d\n",
-                   msg->task_type, msg->payload_len, conn->fd);
-            protocol_send_ok(conn->fd, 1);
-            conn->type = CONN_PRODUCER;
-            break;
+        case MSG_SUBMIT: {
+            Task* t = (Task*)pmad_alloc(sizeof(Task));
+            if (!t) {
+                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "queue full pmad failed");
+                return;
+            }
 
-        case MSG_READY:
+            t->id               = queue_next_id(q);
+            t->status           = TASK_WAITING;
+            t->retries_left     = 3;
+            t->next             = NULL;
+            t->payload          = msg->payload;
+            t->payload_len      = msg->payload_len;
+            
+            strncpy(t->type, msg->task_type, 31);
+            t->type[31]         = '\0';
+
+            queue_push(q, t);
+            conn->type = CONN_PRODUCER;
+            protocol_send_ok(conn->fd, t->id);
+            try_dispach(q, pool);
+
+            break;
+        }
+
+        case MSG_READY: {
             printf("[daemon] READY received: fd=%d\n", conn->fd);
             protocol_send_wait(conn->fd);
             conn->type = CONN_WORKER;
             break;
+        }
 
         case MSG_DONE:
             printf("[daemon] DONE received: "

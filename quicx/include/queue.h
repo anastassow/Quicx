@@ -12,7 +12,7 @@ typedef enum {
 } TaskStatus;
 
 typedef struct Task {
-    void*           payload;
+    void*           payload; // read only
     struct Task*    next;
     uint32_t        id;
     uint8_t         status;
