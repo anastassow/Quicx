@@ -73,16 +73,23 @@ void daemon_handle_message(Connection* conn, Message* msg,
             break;
         }
 
-        case MSG_HEARTBEAT:
+        case MSG_HEARTBEAT: {
             protocol_send_pong(conn->fd);
-            break;
 
-        case MSG_STATS:
-            printf("[daemon] STATS requested: fd=%d\n", conn->fd);
-            const char* json = "{\"idle\":0,\"busy\":0,\"queued\":0}";
+            break;
+        }
+
+        case MSG_STATS: {
+            char json[256];
+            int len = snprintf(json, sizeof(json),
+                "{\"idle\":%d,\"busy\":%d,\"queued\":%d}",
+                workers_idle_count(pool),
+                workers_busy_count(pool),
+                queue_size(q));
             protocol_send_stats_response(conn->fd,
-                                         (const uint8_t*)json,
-                                         27);
+                                        (const uint8_t*)json,
+                                        (uint32_t)len);
+            
             break;
 
         default:
@@ -92,6 +99,7 @@ void daemon_handle_message(Connection* conn, Message* msg,
                                 ERR_UNKNOWN_TYPE,
                                 "unknown type");
             break;
+        }
     }
 }
 
