@@ -53,11 +53,15 @@ void daemon_handle_message(Connection* conn, Message* msg,
             break;
         }
 
-        case MSG_DONE:
-            printf("[daemon] DONE received: "
-                   "task_id=%u fd=%d\n",
-                   msg->task_id, conn->fd);
+        case MSG_DONE: {
+            
+            if (conn->worker) {
+                worker_set_idle(pool, conn->worker);
+            }
+            try_dispach(q, pool);
+
             break;
+        }
 
         case MSG_FAILED:
             printf("[daemon] FAILED received: "
