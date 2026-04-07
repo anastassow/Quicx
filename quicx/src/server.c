@@ -193,6 +193,8 @@ static void handle_readable(int loop_fd, Connection* conn,
     // will be implemented afterwards !!!
     daemon_handle_message(conn, &msg, q, pool);
 
+    if (buf && msg.type != MSG_SUBMIT) pmad_free(buf);
+
     return;
 
 parse_error:

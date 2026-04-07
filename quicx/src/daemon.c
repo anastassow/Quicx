@@ -2,7 +2,7 @@
 #include "protocol.h"
 #include <stdio.h>
 #include "dispacher.h"
-#include <strings.h>
+#include <string.h>
 
 void daemon_inflight_add(Task* t) {
     printf("[daemon] inflight add: task_id=%u type=%s\n",
@@ -39,9 +39,17 @@ void daemon_handle_message(Connection* conn, Message* msg,
         }
 
         case MSG_READY: {
-            printf("[daemon] READY received: fd=%d\n", conn->fd);
-            protocol_send_wait(conn->fd);
+
+            Worker* w = worker_add(pool, conn->fd);
+            if(!w) {
+                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "worker pool full");
+                return;
+            }
+
+            conn->worker = w;
             conn->type = CONN_WORKER;
+            try_dispach(q, pool);
+
             break;
         }
 
