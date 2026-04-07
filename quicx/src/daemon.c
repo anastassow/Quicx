@@ -74,7 +74,6 @@ void daemon_handle_message(Connection* conn, Message* msg,
         }
 
         case MSG_HEARTBEAT:
-            printf("[daemon] HEARTBEAT received: fd=%d\n", conn->fd);
             protocol_send_pong(conn->fd);
             break;
 
