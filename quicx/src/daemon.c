@@ -103,9 +103,10 @@ void daemon_handle_message(Connection* conn, Message* msg,
     }
 }
 
-void daemon_handle_disconnect(Connection* conn,
-                              WorkerPool* pool) {
-    printf("[daemon] disconnect: fd=%d type=%d\n",
-           conn->fd, conn->type);
-    (void)pool;
+void daemon_handle_disconnect(Connection* conn, WorkerPool* pool) {
+    
+    if (conn->type == CONN_WORKER && conn->worker) {
+        worker_remove(pool, conn->worker);
+        conn->worker = NULL;
+    }
 }
