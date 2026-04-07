@@ -91,10 +91,9 @@ void daemon_handle_message(Connection* conn, Message* msg,
                                         (uint32_t)len);
             
             break;
+        }
 
-        default:
-            printf("[daemon] unknown message type=0x%02x fd=%d\n",
-                   msg->type, conn->fd);
+        default:{
             protocol_send_error(conn->fd,
                                 ERR_UNKNOWN_TYPE,
                                 "unknown type");
