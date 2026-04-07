@@ -63,11 +63,15 @@ void daemon_handle_message(Connection* conn, Message* msg,
             break;
         }
 
-        case MSG_FAILED:
-            printf("[daemon] FAILED received: "
-                   "task_id=%u fd=%d\n",
-                   msg->task_id, conn->fd);
+        case MSG_FAILED: {
+            
+            if (conn->worker) {
+                worker_set_idle(pool, conn->worker);
+            }
+            try_dispach(q, pool);
+
             break;
+        }
 
         case MSG_HEARTBEAT:
             printf("[daemon] HEARTBEAT received: fd=%d\n", conn->fd);
