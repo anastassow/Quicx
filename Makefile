@@ -21,6 +21,10 @@ QUICX_CORE = quicx/src/queue.c \
 all: test_queue test_workers test_dispatcher \
      test_protocol test_server
 
+test_daemon: quicx/src/test_daemon.c \
+             $(QUICX_CORE) $(PMAD_SRC)
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
+
 test_queue: quicx/src/test_queue.c \
             quicx/src/queue.c $(PMAD_SRC)
 	$(CC) $(CFLAGS) $^ -o $@
