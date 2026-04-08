@@ -12,6 +12,9 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <sys/un.h>
+
+#define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 
 // socket helpers-------------------------------------
 
@@ -187,8 +190,26 @@ parse_error_nobuf:
     conn_close(loop_fd, conn, pool);
 }
 
+static void handle_new_unix_connection(int loop_fd, int unix_fd) {
+    int fd = accept(unix_fd, NULL, NULL);
+    if (fd < 0) { perror("accept unix"); return; }
+
+    Connection* conn = (Connection*)pmad_alloc(sizeof(Connection));
+    if (!conn) { close(fd); return; }
+
+    conn->fd     = fd;
+    conn->type   = CONN_UNKNOWN;
+    conn->worker = NULL;
+
+    set_nonblocking(fd);
+    el_add(loop_fd, fd, conn);
+
+    printf("cli connected fd=%d\n", fd);
+}
+
 int server_start(int port, Queue* q, WorkerPool* pool) {
 
+    // TCP socket ────────────────────────────────────────────────────────
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("socket");
@@ -219,6 +240,29 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     printf("quicx listening on port %d [%s]\n",
            port, EL_BACKEND);
 
+    // unix socket for CLI ───────────────────────────────────────────────
+    int unix_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (unix_fd < 0) {
+        perror("unix socket");
+        unix_fd = -1;
+    } else {
+        struct sockaddr_un un;
+        memset(&un, 0, sizeof(un));
+        un.sun_family = AF_UNIX;
+        strncpy(un.sun_path, UNIX_SOCKET_PATH,
+                sizeof(un.sun_path) - 1);
+        unlink(UNIX_SOCKET_PATH);
+
+        if (bind(unix_fd, (struct sockaddr*)&un, sizeof(un)) < 0) {
+            perror("unix bind");
+            close(unix_fd);
+            unix_fd = -1;
+        } else {
+            listen(unix_fd, 16);
+            printf("quicx cli socket: %s\n", UNIX_SOCKET_PATH);
+        }
+    }
+
     int loop_fd = el_create();
     if (loop_fd < 0) {
         perror("el_create");
@@ -230,8 +274,15 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     server_conn.fd     = server_fd;
     server_conn.type   = CONN_UNKNOWN;
     server_conn.worker = NULL;
-
     el_add(loop_fd, server_fd, &server_conn);
+
+    static Connection unix_conn;
+    if (unix_fd >= 0) {
+        unix_conn.fd     = unix_fd;
+        unix_conn.type   = CONN_UNKNOWN;
+        unix_conn.worker = NULL;
+        el_add(loop_fd, unix_fd, &unix_conn);
+    }
 
     // main event loop ───────────────────────────────────────────────────────
 
@@ -251,6 +302,8 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
 
             if (conn->fd == server_fd) {
                 handle_new_connection(loop_fd, server_fd);
+            } else if (unix_fd >= 0 && conn->fd == unix_fd) {
+                handle_new_unix_connection(loop_fd, unix_fd);
             } else {
                 handle_readable(loop_fd, conn, q, pool);
             }
@@ -259,5 +312,9 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
 
     el_destroy(loop_fd);
     close(server_fd);
+    if (unix_fd >= 0) {
+        close(unix_fd);
+        unlink(UNIX_SOCKET_PATH);
+    }
     return 0;
 }

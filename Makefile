@@ -54,6 +54,10 @@ test_stats: quicx/src/test_stats.c \
             $(QUICX_CORE) $(PMAD_SRC)
 	$(CC) $(CFLAGS) $^ -o $@ -lpthread
 
+test_unix: quicx/src/test_unix.c \
+           $(QUICX_CORE) $(PMAD_SRC)
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
+
 test: all
 	@echo "--- running test_queue ---"
 	./test_queue
