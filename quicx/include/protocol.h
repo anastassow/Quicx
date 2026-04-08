@@ -74,7 +74,11 @@ int protocol_send_wait(int fd);
 int protocol_send_heartbeat(int fd);
 int protocol_send_pong(int fd);
 int protocol_send_stats_request(int fd);
-int protocol_send_stats_response(int fd, const uint8_t* json, uint32_t len);
+int protocol_send_stats_response(int fd,
+                               const void* stats_hdr,
+                               uint32_t    stats_hdr_len,
+                               const void* classes,
+                               uint32_t    classes_len);
 
 
 #endif

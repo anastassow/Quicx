@@ -173,10 +173,17 @@ int protocol_send_stats_request(int fd) {
     return send_frame_v(fd, MSG_STATS, NULL, 0);
 }
 
-int protocol_send_stats_response(int fd, const uint8_t* json, uint32_t len) {
-    struct iovec parts[1];
-    parts[0].iov_base = (void*)json;
-    parts[0].iov_len  = len;
+int protocol_send_stats_response(int fd,
+                               const void* stats_hdr,
+                               uint32_t    stats_hdr_len,
+                               const void* classes,
+                               uint32_t    classes_len) {
+    struct iovec parts[2];
+    parts[0].iov_base = (void*)stats_hdr;
+    parts[0].iov_len  = stats_hdr_len;
+    parts[1].iov_base = (void*)classes;
+    parts[1].iov_len  = classes_len;
 
-    return send_frame_v(fd, MSG_STATS_RESPONSE, parts, 1);
+    int count = classes_len > 0 ? 2 : 1;
+    return send_frame_v(fd, MSG_STATS_RESPONSE, parts, count);
 }

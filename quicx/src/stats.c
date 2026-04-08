@@ -3,7 +3,7 @@
 
 static Stats g_stats;
 
-void stast_init(void) {
+void stats_init(void) {
     memset(&g_stats, 0, sizeof(g_stats));
     g_stats.start_time = time(NULL);
 }

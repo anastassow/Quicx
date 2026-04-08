@@ -16,7 +16,8 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/protocol.c \
              quicx/src/event_loop.c \
              quicx/src/server.c \
-             quicx/src/daemon.c
+             quicx/src/daemon.c \
+             quicx/src/stats.c
 
 all: test_queue test_workers test_dispatcher \
      test_protocol test_server
@@ -47,6 +48,10 @@ test_protocol: quicx/src/test_protocol.c \
 
 test_server: quicx/src/test_server.c \
              $(QUICX_CORE) $(PMAD_SRC)
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
+
+test_stats: quicx/src/test_stats.c \
+            $(QUICX_CORE) $(PMAD_SRC)
 	$(CC) $(CFLAGS) $^ -o $@ -lpthread
 
 test: all

@@ -37,3 +37,14 @@ void pmad_destroy() {
     }
     incPMAD_instance.pool_head = NULL;
 }
+
+int pmad_get_stats(PmadClassStats* out, int max_classes) {
+    int count = 0;
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        out[i].block_size       = (uint32_t)incPMAD_instance.size_classes[i].block_size;
+        out[i].total_blocks     = (uint32_t)incPMAD_instance.size_classes[i].total_blocks;
+        out[i].allocated_blocks = (uint32_t)incPMAD_instance.size_classes[i].allocated_blocks;
+        count++;
+    }
+    return count;
+}
