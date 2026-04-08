@@ -23,22 +23,18 @@ static int set_nonblocking(int fd) {
 
 static void set_nodelay(int fd) {
     int flag = 1;
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-               &flag, sizeof(flag));
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
 static void set_reuseaddr(int fd) {
     int flag = 1;
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-               &flag, sizeof(flag));
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 }
 
 // connection managment------------------------------
 
 static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
 
-    // notify daemon so it can clean up worker state
-    // this is from the deamon for now it is not made i will make it afterwords !!!
     daemon_handle_disconnect(conn, pool);
 
     el_remove(loop_fd, conn->fd);
@@ -54,9 +50,7 @@ static void handle_new_connection(int loop_fd, int server_fd) {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
 
-    int fd = accept(server_fd,
-                    (struct sockaddr*)&addr,
-                    &addrlen);
+    int fd = accept(server_fd, (struct sockaddr*)&addr, &addrlen);
 
     if (fd < 0) {
         perror("accept");
@@ -89,22 +83,14 @@ static void handle_readable(int loop_fd, Connection* conn,
                              Queue* q, WorkerPool* pool) {
 
     ProtocolHeader hdr;
-    int r = protocol_read_exact(conn->fd,
-                                &hdr,
-                                PROTOCOL_HEADER_SIZE);
-    if (r == 0) {
-        conn_close(loop_fd, conn, pool);
-        return;
-    }
-    if (r < 0) {
+    int r = protocol_read_exact(conn->fd, &hdr, PROTOCOL_HEADER_SIZE);
+    if (r <= 0) {
         conn_close(loop_fd, conn, pool);
         return;
     }
 
     if (hdr.version != PROTOCOL_VERSION) {
-        protocol_send_error(conn->fd,
-                            ERR_VERSION_MISMATCH,
-                            "bad version");
+        protocol_send_error(conn->fd, ERR_VERSION_MISMATCH, "bad version");
         conn_close(loop_fd, conn, pool);
         return;
     }
@@ -112,31 +98,9 @@ static void handle_readable(int loop_fd, Connection* conn,
     uint32_t payload_len = ntohl(hdr.length);
 
     if (payload_len > PROTOCOL_MAX_PAYLOAD) {
-        protocol_send_error(conn->fd,
-                            ERR_PAYLOAD_TOO_BIG,
-                            "payload too large");
+        protocol_send_error(conn->fd, ERR_PAYLOAD_TOO_BIG, "payload too large");
         conn_close(loop_fd, conn, pool);
         return;
-    }
-
-    uint8_t* buf = NULL;
-    if (payload_len > 0) {
-        buf = (uint8_t*)pmad_alloc(payload_len);
-        if (!buf) {
-            protocol_send_error(conn->fd,
-                                ERR_QUEUE_FULL,
-                                "out of memory");
-            return;
-        }
-
-        r = protocol_read_exact(conn->fd,
-                                buf,
-                                (int)payload_len);
-        if (r <= 0) {
-            pmad_free(buf);
-            conn_close(loop_fd, conn, pool);
-            return;
-        }
     }
 
     Message msg;
@@ -144,64 +108,82 @@ static void handle_readable(int loop_fd, Connection* conn,
     msg.version = hdr.version;
     msg.type    = (MessageType)hdr.type;
 
-    if (payload_len > 0 && buf != NULL) {
-        uint8_t* p = buf;
+    if (msg.type == MSG_SUBMIT) {
+        if (payload_len < 1) goto parse_error_nobuf;
 
-        switch (msg.type) {
-            case MSG_SUBMIT: {
-                if (payload_len < 1) goto parse_error;
-                uint8_t type_len = p[0];
-                if (type_len >= PROTOCOL_MAX_TYPE_LEN)
-                    goto parse_error;
-                if (payload_len < 1u + type_len)
-                    goto parse_error;
-                memcpy(msg.task_type, p + 1, type_len);
-                msg.task_type[type_len] = '\0';
-                msg.payload     = p + 1 + type_len;
-                msg.payload_len = payload_len - 1 - type_len;
-                break;
+        uint8_t type_len_byte;
+        if (protocol_read_exact(conn->fd, &type_len_byte, 1) <= 0) {
+            conn_close(loop_fd, conn, pool);
+            return;
+        }
+        if (type_len_byte >= PROTOCOL_MAX_TYPE_LEN) goto parse_error_nobuf;
+        if (payload_len < 1u + type_len_byte)       goto parse_error_nobuf;
+
+        char task_type[PROTOCOL_MAX_TYPE_LEN];
+        if (type_len_byte > 0) {
+            if (protocol_read_exact(conn->fd, task_type, type_len_byte) <= 0) {
+                conn_close(loop_fd, conn, pool);
+                return;
             }
+        }
+        task_type[type_len_byte] = '\0';
 
-            case MSG_DONE:
-            case MSG_FAILED: {
-                if (payload_len < 4) goto parse_error;
-                memcpy(&msg.task_id, p, 4);
-                msg.task_id = ntohl(msg.task_id);
-                break;
+        uint32_t real_len    = payload_len - 1u - type_len_byte;
+        uint8_t* payload_buf = NULL;
+        if (real_len > 0) {
+            payload_buf = (uint8_t*)pmad_alloc(real_len);
+            if (!payload_buf) {
+                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
+                return;
             }
-
-            case MSG_STATS_RESPONSE: {
-                msg.payload     = p;
-                msg.payload_len = payload_len;
-                break;
+            if (protocol_read_exact(conn->fd, payload_buf, (int)real_len) <= 0) {
+                pmad_free(payload_buf);
+                conn_close(loop_fd, conn, pool);
+                return;
             }
+        }
 
-            case MSG_READY:
-            case MSG_WAIT:
-            case MSG_HEARTBEAT:
-            case MSG_PONG:
-            case MSG_STATS:
-                break;
+        memcpy(msg.task_type, task_type, type_len_byte + 1);
+        msg.payload     = payload_buf;
+        msg.payload_len = real_len;
 
-            default:
-                goto parse_error;
+        daemon_handle_message(conn, &msg, q, pool);
+        return;
+    }
+
+    uint8_t small_buf[8] = {0};
+
+    switch (msg.type) {
+
+        case MSG_DONE:
+        case MSG_FAILED: {
+            if (payload_len < 4) goto parse_error_nobuf;
+            if (protocol_read_exact(conn->fd, small_buf, 4) <= 0) {
+                conn_close(loop_fd, conn, pool);
+                return;
+            }
+            memcpy(&msg.task_id, small_buf, 4);
+            msg.task_id = ntohl(msg.task_id);
+            break;
+        }
+
+        case MSG_READY:
+        case MSG_WAIT:
+        case MSG_HEARTBEAT:
+        case MSG_PONG:
+        case MSG_STATS:
+            break;
+
+        default: {
+            goto parse_error_nobuf;
         }
     }
 
-    // pass to daemon
-    // daemon copies what it needs before we free buf
-    // will be implemented afterwards !!!
     daemon_handle_message(conn, &msg, q, pool);
-
-    if (buf && msg.type != MSG_SUBMIT) pmad_free(buf);
-
     return;
 
-parse_error:
-    if (buf) pmad_free(buf);
-    protocol_send_error(conn->fd,
-                        ERR_INVALID_MSG,
-                        "parse error");
+parse_error_nobuf:
+    protocol_send_error(conn->fd, ERR_INVALID_MSG, "parse error");
     conn_close(loop_fd, conn, pool);
 }
 
@@ -222,9 +204,7 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     addr.sin_port        = htons((uint16_t)port);
     addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(server_fd,
-             (struct sockaddr*)&addr,
-             sizeof(addr)) < 0) {
+    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("bind");
         close(server_fd);
         return -1;
@@ -247,8 +227,8 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     }
 
     static Connection server_conn;
-    server_conn.fd   = server_fd;
-    server_conn.type = CONN_UNKNOWN;
+    server_conn.fd     = server_fd;
+    server_conn.type   = CONN_UNKNOWN;
     server_conn.worker = NULL;
 
     el_add(loop_fd, server_fd, &server_conn);
