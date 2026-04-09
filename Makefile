@@ -19,8 +19,11 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/daemon.c \
              quicx/src/stats.c
 
-all: test_queue test_workers test_dispatcher \
+all: quicxd test_queue test_workers test_dispatcher \
      test_protocol test_server
+
+quicxd: quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC)
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
 
 test_daemon: quicx/src/test_daemon.c \
              $(QUICX_CORE) $(PMAD_SRC)
@@ -72,5 +75,5 @@ test: all
 	@echo "--- all tests passed ---"
 
 clean:
-	rm -f test_queue test_workers test_dispatcher \
-	      test_protocol test_server
+	rm -f quicxd test_queue test_workers test_dispatcher \
+	      test_protocol test_server test_daemon test_stats test_unix
