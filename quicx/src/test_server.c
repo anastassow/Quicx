@@ -308,7 +308,7 @@ int main(void) {
     // init PMAD
     size_t sizes[]       = {32, 64, 128, 256, 512, 1024};
     size_t percentages[] = {10, 25, 25,  20,  12,  8};
-    pmad_init(sizes, percentages);
+    pmad_init(sizes, 6, percentages, 1024 * 1024);
 
     // init queue and worker pool
     queue_init(&g_queue);

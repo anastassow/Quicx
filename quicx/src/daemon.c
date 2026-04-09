@@ -86,8 +86,8 @@ void daemon_handle_message(Connection* conn, Message* msg,
         case MSG_STATS: {
             Stats* s = stats_get();
 
-            PmadClassStats classes[NUM_CLASSES];
-            int n = pmad_get_stats(classes, NUM_CLASSES);
+            PmadClassStats classes[MAX_PMAD_CLASSES];
+            int n = pmad_get_stats(classes, MAX_PMAD_CLASSES);
 
             StatsHeader hdr;
             hdr.idle_workers    = htonl((uint32_t)workers_idle_count(pool));
@@ -99,7 +99,7 @@ void daemon_handle_message(Connection* conn, Message* msg,
             hdr.uptime_seconds  = htonll((uint64_t)(time(NULL) - s->start_time));
             hdr.class_count     = htonl((uint32_t)n);
 
-            StatsClass sc[NUM_CLASSES];
+            StatsClass sc[MAX_PMAD_CLASSES];
             for (int i = 0; i < n; i++) {
                 sc[i].block_size       = htonl(classes[i].block_size);
                 sc[i].total_blocks     = htonl(classes[i].total_blocks);

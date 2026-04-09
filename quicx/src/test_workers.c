@@ -6,7 +6,7 @@ int main() {
     // init PMAD
     size_t sizes[]       = {32, 64, 128, 256, 512};
     size_t percentages[] = {40, 20, 20,  10,  10};
-    pmad_init(sizes, percentages);
+    pmad_init(sizes, 6, percentages, 1024 * 1024);
 
     WorkerPool pool;
     workers_init(&pool);
