@@ -1,11 +1,9 @@
-#!/usr/bin/env sh
 set -e
 
 REPO="anastassow/Quicx"
 INSTALL_DIR="/usr/local/bin"
 
-# version support (default = latest)
-VERSION="${QUICX_VERSION:-v1.0.0}"
+VERSION="${QUICX_VERSION:-latest}"
 
 TMP_DIR="$(mktemp -d)"
 DEST="${TMP_DIR}/quicx"
@@ -22,6 +20,9 @@ error()   { printf "${RED}  ✗${RESET} %s\n" "$1" >&2; exit 1; }
 
 printf "\n${BOLD}  quicx installer${RESET}\n\n"
 
+# -------------------------
+# Detect platform
+# -------------------------
 detect_platform() {
 OS="$(uname -s)"
 ARCH="$(uname -m)"
@@ -47,14 +48,20 @@ Darwin)
 esac
 }
 
+# -------------------------
+# Download binary
+# -------------------------
 download_binary() {
 info "Resolving version: $VERSION"
 
+# decide version folder
 if [ "$VERSION" = "latest" ]; then
-  BASE_URL="https://raw.githubusercontent.com/${REPO}/main/releases/v${VERSION}"
+  VERSION_DIR="v1.0.0"
 else
-  BASE_URL="https://raw.githubusercontent.com/${REPO}/main/releases/v${VERSION}"
+  VERSION_DIR="$VERSION"
 fi
+
+BASE_URL="https://raw.githubusercontent.com/${REPO}/main/releases/${VERSION_DIR}"
 
 BINARY="quicx-${PLATFORM}"
 URL="${BASE_URL}/${BINARY}"
@@ -72,6 +79,9 @@ fi
 chmod +x "$DEST"
 }
 
+# -------------------------
+# Install binary
+# -------------------------
 install_binary() {
 info "Installing to ${INSTALL_DIR}/quicx..."
 
@@ -86,6 +96,9 @@ else
 fi
 }
 
+# -------------------------
+# Verify
+# -------------------------
 verify_install() {
 if command -v quicx >/dev/null 2>&1; then
   success "quicx installed — run ${BOLD}quicx --help${RESET}"
@@ -95,12 +108,16 @@ else
 fi
 }
 
+# -------------------------
+# Cleanup
+# -------------------------
 cleanup() {
 rm -rf "$TMP_DIR"
 }
 
 trap cleanup EXIT
 
+# run
 detect_platform
 download_binary
 install_binary
