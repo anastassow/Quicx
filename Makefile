@@ -95,23 +95,27 @@ release_dir:
 	mkdir -p $(OUT_DIR)
 
 linux_x86:
-	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
 	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	-target x86_64-linux-gnu \
 	-o $(OUT_DIR)/quicx-linux-x86_64 -lpthread
 
 linux_arm:
-	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
 	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	-target aarch64-linux-gnu \
 	-o $(OUT_DIR)/quicx-linux-aarch64 -lpthread
 
 mac_x86:
-	$(CC_MAC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
 	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	-target x86_64-macos-none \
 	-o $(OUT_DIR)/quicx-darwin-x86_64 -lpthread
 
 mac_arm:
-	$(CC_MAC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
 	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	-target aarch64-macos-none \
 	-o $(OUT_DIR)/quicx-darwin-arm64 -lpthread
 
 release: clean release_dir linux_x86 linux_arm mac_x86 mac_arm
