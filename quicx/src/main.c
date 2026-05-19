@@ -34,7 +34,7 @@
 #include "incPMAD.h"
 
 #define VERSION          "1.0.0"
-#define DEFAULT_PORT     6380
+#define DEFAULT_PORT     16381
 #define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 #define PID_FILE         "/tmp/quicx.pid"
 
@@ -60,8 +60,15 @@ static char* trim(char* s) {
 
 static void config_defaults(Config* c) {
     c->port        = DEFAULT_PORT;
-    c->pool_size   = 0;
-    c->class_count = 0;
+    c->pool_size   = 1048576;
+    c->class_count = 6;
+
+    c->sizes[0] = 32;   c->percentages[0] = 10;
+    c->sizes[1] = 64;   c->percentages[1] = 25;
+    c->sizes[2] = 128;  c->percentages[2] = 25;
+    c->sizes[3] = 256;  c->percentages[3] = 20;
+    c->sizes[4] = 512;  c->percentages[4] = 12;
+    c->sizes[5] = 1024; c->percentages[5] =  8;
 }
 
 static void config_validate(Config* c) {
@@ -268,11 +275,19 @@ static int cmd_start(int argc, char* argv[]) {
     Config c;
     config_defaults(&c);
 
+    int config_provided = 0;
     for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "--config") == 0 && i + 1 < argc)
+        if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
             config_load(&c, argv[++i]);
-        else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc)
+            config_provided = 1;
+        } else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
             c.port = atoi(argv[++i]);
+        }
+    }
+
+    if (!config_provided) {
+        printf("no --config provided, using built-in defaults\n");
+        config_validate(&c);
     }
 
     printf("quicx v%s starting\n", VERSION);
