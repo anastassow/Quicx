@@ -118,7 +118,7 @@ mac_arm:
 	-target aarch64-macos-none \
 	-o $(OUT_DIR)/quicx-darwin-arm64 -lpthread
 
-release: clean release_dir linux_x86 linux_arm mac_x86 mac_arm
+release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 	@echo "✓ Release v$(VERSION) built in $(OUT_DIR)"
 
 clean:
