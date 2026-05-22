@@ -47,6 +47,8 @@ void daemon_handle_message(Connection* conn, Message* msg,
             strncpy(t->type, msg->task_type, 31);
             t->type[31]         = '\0';
 
+            t->producer_fd = conn->fd;
+
             queue_push(q, t);
             conn->type = CONN_PRODUCER;
             protocol_send_ok(conn->fd, t->id);
@@ -75,6 +77,7 @@ void daemon_handle_message(Connection* conn, Message* msg,
             
             if (conn->worker) {
                 worker_set_idle(pool, conn->worker);
+                conn->worker->current_fd = -1;
             }
             stats_task_completed();
             try_dispach(q, pool);
@@ -85,6 +88,8 @@ void daemon_handle_message(Connection* conn, Message* msg,
         case MSG_FAILED: {
             
             if (conn->worker) {
+                protocol_send_failed(conn->worker->current_fd, msg->task_id, "Worker Failed");
+                conn->worker->current_fd = -1;
                 worker_set_idle(pool, conn->worker);
             }
             stats_task_failed();

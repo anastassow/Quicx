@@ -20,7 +20,7 @@ typedef struct Task {
     uint8_t         _pad[2];
     uint32_t        payload_len;
     char            type[32];
-    uint8_t         _align[4];
+    int             producer_fd;
 } Task;
 
 _Static_assert(sizeof(Task) == 64, "Task must be 64 bytes");

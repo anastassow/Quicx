@@ -99,6 +99,8 @@ static void config_load(Config* c, const char* path) {
         exit(1);
     }
 
+    c->class_count = 0;
+
     char line[512];
 
     while (fgets(line, sizeof(line), f)) {

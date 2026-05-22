@@ -17,6 +17,8 @@ void try_dispach(Queue* q, WorkerPool* pool) {
 
         worker_set_busy(pool, w);
 
+        w->current_fd = t->producer_fd;
+
         protocol_send_task(w->fd, t->id, t->type, t->payload, t->payload_len);
 
         if (t->payload) pmad_free(t->payload);

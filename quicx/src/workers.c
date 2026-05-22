@@ -56,6 +56,7 @@ Worker* worker_add(WorkerPool* pool, int fd) {
     w->is_idle = 1;
     w->next    = NULL;
     w->prev    = NULL;
+    w->current_fd = -1;
 
     list_push(&pool->idle_head, &pool->idle_tail, &pool->idle_count, w);
 

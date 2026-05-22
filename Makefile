@@ -50,7 +50,7 @@ test_workers:
 
 test_dispatcher:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_dispatcher.c quicx/src/queue.c quicx/src/workers.c quicx/src/dispacher.c $(PMAD_SRC) \
+	quicx/src/test_dispatcher.c quicx/src/queue.c quicx/src/workers.c quicx/src/dispacher.c quicx/src/protocol.c $(PMAD_SRC) \
 	-o $@
 
 test_protocol:

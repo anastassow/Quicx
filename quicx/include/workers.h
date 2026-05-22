@@ -9,8 +9,9 @@ typedef struct Worker {
     struct Worker*  prev;
     int             fd;
     uint32_t        id;
+    int             current_fd;
     uint8_t         is_idle;
-    uint8_t         _pad[7];
+    uint8_t         _pad[3];
 } Worker;
 
 _Static_assert(sizeof(Worker) == 32, "Task must be 32 bytes");
