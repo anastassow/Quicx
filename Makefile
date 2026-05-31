@@ -2,6 +2,7 @@ CC = gcc
 CC_MAC = clang
 
 CFLAGS_COMMON = -std=c17 \
+         -D_GNU_SOURCE \
          -Ipmad/include \
          -Ipmad/include/stuctures \
          -Iquicx/include
