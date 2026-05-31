@@ -12,10 +12,9 @@ CFLAGS_DEBUG = -g
 CFLAGS_RELEASE = -O2
 
 PMAD_SRC = pmad/src/PMAD.c \
-           pmad/src/incPmad.c \
+           pmad/src/incPMAD.c \
            pmad/src/MemoryPool.c \
-           pmad/src/BlockHeader.c \
-           pmad/src/SIzeClass.c
+           pmad/src/BlockHeader.c
 
 QUICX_CORE = quicx/src/queue.c \
              quicx/src/workers.c \
