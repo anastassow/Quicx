@@ -33,7 +33,7 @@
 #include "protocol.h"
 #include "incPMAD.h"
 
-#define VERSION          "1.0.0"
+#define VERSION          "1.0.2"
 #define DEFAULT_PORT     16381
 #define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 #define PID_FILE         "/tmp/quicx.pid"
