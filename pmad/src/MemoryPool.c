@@ -1,12 +1,11 @@
-#include "structures/MemoryPool.h"
-#include "PMAD.h"
+#include "../include/PMAD.h"
 
 void attach_new_pool(PMAD* pmad, void* mem, size_t pool_size) {
     MemoryPool* pool = (MemoryPool*)mem;
 
     pool->start = (uint8_t*)mem + sizeof(MemoryPool);
     pool->size  = pool_size - sizeof(MemoryPool);
-    pool->used  = 0;
+    pool->used  = sizeof(MemoryPool);
 
     pool->next        = pmad->pool_head;
     pmad->pool_head   = pool;
