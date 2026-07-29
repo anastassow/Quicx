@@ -118,7 +118,7 @@ void daemon_handle_message(Connection* conn, Message* msg,
             hdr.tasks_completed = htonll(s->tasks_completed);
             hdr.tasks_failed    = htonll(s->tasks_failed);
             hdr.uptime_seconds  = htonll((uint64_t)(time(NULL) - s->start_time));
-            hdr.class_count     = htonl((uint32_t)n);
+            hdr.class_count     = (uint8_t)n;
 
             StatsClass sc[MAX_PMAD_CLASSES];
             for (int i = 0; i < n; i++) {

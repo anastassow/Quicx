@@ -3,7 +3,7 @@
 
 #include "./PMAD.h"
 
-#define MAX_PMAD_CLASSES 32
+#define MAX_PMAD_CLASSES MAX_NUMBER_OF_SIZE_CLASSES
 
 /*
 Structure for stats lookup.

@@ -43,8 +43,8 @@
 typedef struct {
     int    port;
     size_t pool_size;
-    size_t sizes[16];
-    size_t percentages[16];
+    size_t sizes[MAX_PMAD_CLASSES];
+    size_t percentages[MAX_PMAD_CLASSES];
     int    class_count;
 } Config;
 
@@ -127,8 +127,8 @@ static void config_load(Config* c, const char* path) {
             c->pool_size = (size_t)atoll(v);
         }
         else if (strcmp(k, "class") == 0) {
-            if (c->class_count >= 16) {
-                fprintf(stderr, "error: too many classes (max 16)\n");
+            if (c->class_count >= MAX_PMAD_CLASSES) {
+                fprintf(stderr, "error: too many classes (max %d)\n", MAX_PMAD_CLASSES);
                 exit(1);
             }
 
@@ -186,7 +186,7 @@ static int cli_read_stats(int fd, StatsHeader* hdr,
     if (protocol_read_exact(fd, hdr, sizeof(StatsHeader)) <= 0)
         return -1;
 
-    uint32_t n = ntohl(hdr->class_count);
+    uint32_t n = hdr->class_count;
     if ((int)n > max) return -1;
 
     if (n > 0)
@@ -349,10 +349,10 @@ static int cmd_status(void) {
     protocol_send_stats_request(fd);
 
     StatsHeader hdr;
-    StatsClass  classes[16];
+    StatsClass  classes[MAX_PMAD_CLASSES];
     int n = 0;
 
-    int r = cli_read_stats(fd, &hdr, classes, 16, &n);
+    int r = cli_read_stats(fd, &hdr, classes, MAX_PMAD_CLASSES, &n);
     close(fd);
 
     if (r < 0) {

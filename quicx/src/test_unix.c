@@ -80,7 +80,7 @@ static int read_stats(int fd, StatsHeader* hdr,
     r = protocol_read_exact(fd, hdr, sizeof(StatsHeader));
     if (r <= 0) return r;
 
-    uint32_t n = ntohl(hdr->class_count);
+    uint32_t n = hdr->class_count;
     if ((int)n > max) return -1;
     if (n > 0)
         protocol_read_exact(fd, classes,
@@ -149,7 +149,7 @@ static void test_unix_stats_request(void) {
     check("got stats response",      r == 1);
     check("has size classes",        n > 0);
     check("uptime field present",    ntohll(hdr.uptime_seconds) >= 0);
-    check("class_count matches n",   ntohl(hdr.class_count) == (uint32_t)n);
+    check("class_count matches n",   hdr.class_count == (uint32_t)n);
 
     close(fd);
 }
@@ -215,8 +215,8 @@ static void test_unix_multiple_connections(void) {
 
     // all should see same class count
     check("same class count",
-          ntohl(hdr1.class_count) == ntohl(hdr2.class_count) &&
-          ntohl(hdr2.class_count) == ntohl(hdr3.class_count));
+          hdr1.class_count == hdr2.class_count &&
+          hdr2.class_count == hdr3.class_count);
 
     close(fd1);
     close(fd2);

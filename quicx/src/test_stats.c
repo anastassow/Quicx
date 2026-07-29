@@ -70,7 +70,7 @@ static int read_stats(int fd, StatsHeader* hdr,
     if (r <= 0) return r;
 
     // read StatsClass array
-    uint32_t n = ntohl(hdr->class_count);
+    uint32_t n = hdr->class_count;
     if ((int)n > max_classes) return -1;
 
     if (n > 0) {
