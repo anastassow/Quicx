@@ -16,26 +16,40 @@
 
 #define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 
-// socket helpers-------------------------------------
+/* functions for the sockets */
 
+/* 
+Function to set the connection to nonblocking.
+return immediately (with EAGAIN/EWOULDBLOCK) 
+instead of blocking
+*/
 static int set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) return -1;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
+/* 
+Function to set the socket with no delay.
+Disables Nagle's algorithm.
+*/
 static void set_nodelay(int fd) {
     int flag = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
+/* sets reuse address */
 static void set_reuseaddr(int fd) {
     int flag = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 }
 
-// connection managment------------------------------
+/* connection managment functions */
 
+/* 
+Function remoove connection from demon from 
+pool and freeing the memory for it.
+*/
 static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
 
     daemon_handle_disconnect(conn, pool);
@@ -49,6 +63,10 @@ static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
     pmad_free(conn);
 }
 
+/* 
+Function that handles a new connection accepting it 
+and allocating a connection and adding it to the pool.
+*/
 static void handle_new_connection(int loop_fd, int server_fd) {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
@@ -82,6 +100,10 @@ static void handle_new_connection(int loop_fd, int server_fd) {
            ntohs(addr.sin_port));
 }
 
+/*
+Function that reads the message from the protocol and gives it to the deamon.
+Makes nessesary checks and returns a error to the protocol if it fails. 
+*/
 static void handle_readable(int loop_fd, Connection* conn,
                              Queue* q, WorkerPool* pool) {
 
@@ -185,11 +207,13 @@ static void handle_readable(int loop_fd, Connection* conn,
     daemon_handle_message(conn, &msg, q, pool);
     return;
 
+/* go to for wehen a parsing error occurs */
 parse_error_nobuf:
     protocol_send_error(conn->fd, ERR_INVALID_MSG, "parse error");
     conn_close(loop_fd, conn, pool);
 }
 
+/* Function for connecting a unix socket for the cli */
 static void handle_new_unix_connection(int loop_fd, int unix_fd) {
     int fd = accept(unix_fd, NULL, NULL);
     if (fd < 0) { perror("accept unix"); return; }
@@ -209,7 +233,7 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd) {
 
 int server_start(int port, Queue* q, WorkerPool* pool) {
 
-    // TCP socket ────────────────────────────────────────────────────────
+    /* TCP socket */
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("socket");
@@ -240,7 +264,7 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     printf("quicx listening on port %d [%s]\n",
            port, EL_BACKEND);
 
-    // unix socket for CLI ───────────────────────────────────────────────
+    /* unix socket for CLI */
     int unix_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (unix_fd < 0) {
         perror("unix socket");
@@ -270,12 +294,14 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
         return -1;
     }
 
+    /* listening sockets for server */
     static Connection server_conn;
     server_conn.fd     = server_fd;
     server_conn.type   = CONN_UNKNOWN;
     server_conn.worker = NULL;
     el_add(loop_fd, server_fd, &server_conn);
 
+    /* listening sockets for cli */
     static Connection unix_conn;
     if (unix_fd >= 0) {
         unix_conn.fd     = unix_fd;
@@ -284,7 +310,7 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
         el_add(loop_fd, unix_fd, &unix_conn);
     }
 
-    // main event loop ───────────────────────────────────────────────────────
+    /* main event loop */
 
     ElEvent events[EL_MAX_EVENTS];
 
