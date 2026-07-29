@@ -21,11 +21,6 @@
 #endif
 #endif
 
-void daemon_inflight_add(Task* t) {
-    printf("[daemon] inflight add: task_id=%u type=%s\n",
-           t->id, t->type);
-}
-
 void daemon_handle_message(Connection* conn, Message* msg,
                            Queue* q, WorkerPool* pool) {
     switch (msg->type) {
@@ -44,8 +39,8 @@ void daemon_handle_message(Connection* conn, Message* msg,
             t->payload          = msg->payload;
             t->payload_len      = msg->payload_len;
             
-            strncpy(t->type, msg->task_type, 31);
-            t->type[31]         = '\0';
+            strncpy(t->type, msg->task_type, MAX_TASK_TYPE_SIZE - 1);
+            t->type[MAX_TASK_TYPE_SIZE - 1] = '\0';
 
             t->producer_fd = conn->fd;
 

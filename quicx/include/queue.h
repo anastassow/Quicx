@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "incPMAD.h"
 
+#define MAX_TASK_TYPE_SIZE 32
+
 typedef enum {
     TASK_WAITING     = 0,
     TASK_IN_PROGRESS = 1,
@@ -19,9 +21,9 @@ typedef struct Task {
     uint8_t         status;         /* status of the task from the enum */
     uint8_t         retries_left;   /* retries that had happened */
     uint8_t         _pad[2];        
-    uint32_t        payload_len;    /* len of the payload */
-    char            type[32];       
-    int             producer_fd;    /* the fd of the producer */
+    uint32_t        payload_len;                /* len of the payload */
+    char            type[MAX_TASK_TYPE_SIZE];   /* type of the message (user defined) */
+    int             producer_fd;                /* the fd of the producer */
 } Task;
 
 _Static_assert(sizeof(Task) == 64, "Task must be 64 bytes");
