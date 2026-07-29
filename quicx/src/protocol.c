@@ -5,8 +5,6 @@
 #include <arpa/inet.h>
 #include <sys/uio.h>
 
-// read-----------------------------------------
-
 int protocol_read_exact(int fd, void* buf, int n) {
     int total = 0;
     uint8_t* ptr = (uint8_t*)buf;
@@ -20,10 +18,11 @@ int protocol_read_exact(int fd, void* buf, int n) {
     return total;
 }
 
-// writev helper ─────────────────────────────────────────────────────────────
-
-// sends header + up to 8 payload parts in one syscall
-// no intermediate buffer — no size limit — no copying
+/*
+Helper for the send functions. Uses iovec in order to
+write everything in the fd without composing a final buffer.
+Max iovec is sent to 3 because this is the max it is used.
+*/
 static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int part_count) {
     uint32_t total = 0;
     for (int i = 0; i < part_count; i++)
@@ -34,7 +33,7 @@ static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int
     hdr.type    = (uint8_t)type;
     hdr.length  = htonl(total);
 
-    struct iovec iov[9];
+    struct iovec iov[3];
     iov[0].iov_base = &hdr;
     iov[0].iov_len  = PROTOCOL_HEADER_SIZE;
     for (int i = 0; i < part_count; i++)
@@ -68,8 +67,6 @@ static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int
 
     return 0;
 }
-
-// send functions ────────────────────────────────────────────────────────────
 
 int protocol_send_submit(int fd, const char* type, const uint8_t* payload, uint32_t payload_len) {
     uint8_t type_len  = (uint8_t)strlen(type);

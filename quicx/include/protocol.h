@@ -69,14 +69,13 @@ typedef struct {
 } Message;
 
 
-// read / write-------------------------------------------------
-
-// read exactly n bytes — loops until all received or error
-// returns n on success, 0 on disconnect, -1 on error
+/*
+read exactly n bytes — loops until all received or error
+returns n on success, 0 on disconnect, -1 on error
+*/
 int protocol_read_exact(int fd, void* buf, int n);
 
-// sending--------------------------------------------------------------------
-
+/* Functions to send different messages through the protocol */
 int protocol_send_submit(int fd, const char* type, const uint8_t* payload, uint32_t payload_len);
 int protocol_send_ok(int fd, uint32_t task_id);
 int protocol_send_error(int fd, ErrorCode code, const char* reason);
