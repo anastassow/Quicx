@@ -134,15 +134,17 @@ static void handle_readable(int loop_fd, Connection* conn,
     msg.type    = (MessageType)hdr.type;
 
     if (msg.type == MSG_SUBMIT) {
-        if (payload_len < 1) goto parse_error_nobuf;
+        uint8_t  type_len_byte;
+        uint32_t len_prefix_size = (uint32_t)sizeof(type_len_byte);
 
-        uint8_t type_len_byte;
-        if (protocol_read_exact(conn->fd, &type_len_byte, 1) <= 0) {
+        if (payload_len < len_prefix_size) goto parse_error_nobuf;
+
+        if (protocol_read_exact(conn->fd, &type_len_byte, sizeof(type_len_byte)) <= 0) {
             conn_close(loop_fd, conn, pool);
             return;
         }
-        if (type_len_byte >= PROTOCOL_MAX_TYPE_LEN) goto parse_error_nobuf;
-        if (payload_len < 1u + type_len_byte)       goto parse_error_nobuf;
+        if (type_len_byte >= PROTOCOL_MAX_TYPE_LEN)          goto parse_error_nobuf;
+        if (payload_len < len_prefix_size + type_len_byte)   goto parse_error_nobuf;
 
         char task_type[PROTOCOL_MAX_TYPE_LEN];
         if (type_len_byte > 0) {
@@ -153,7 +155,7 @@ static void handle_readable(int loop_fd, Connection* conn,
         }
         task_type[type_len_byte] = '\0';
 
-        uint32_t real_len    = payload_len - 1u - type_len_byte;
+        uint32_t real_len    = payload_len - len_prefix_size - type_len_byte;
         uint8_t* payload_buf = NULL;
         if (real_len > 0) {
             payload_buf = (uint8_t*)pmad_alloc(real_len);
@@ -168,27 +170,42 @@ static void handle_readable(int loop_fd, Connection* conn,
             }
         }
 
-        memcpy(msg.task_type, task_type, type_len_byte + 1);
-        msg.payload     = payload_buf;
-        msg.payload_len = real_len;
+        memcpy(msg.as.submit.task_type, task_type, type_len_byte + 1);
+        msg.as.submit.payload     = payload_buf;
+        msg.as.submit.payload_len = real_len;
 
         daemon_handle_message(conn, &msg, q, pool);
         return;
     }
 
-    uint8_t small_buf[8] = {0};
-
     switch (msg.type) {
 
-        case MSG_DONE:
-        case MSG_FAILED: {
-            if (payload_len < 4) goto parse_error_nobuf;
-            if (protocol_read_exact(conn->fd, small_buf, 4) <= 0) {
+        case MSG_DONE: {
+            uint32_t id_size = (uint32_t)sizeof(msg.as.done.task_id);
+
+            if (payload_len != id_size) goto parse_error_nobuf;
+            if (protocol_read_exact(conn->fd, &msg.as.done.task_id, sizeof(msg.as.done.task_id)) <= 0) {
                 conn_close(loop_fd, conn, pool);
                 return;
             }
-            memcpy(&msg.task_id, small_buf, 4);
-            msg.task_id = ntohl(msg.task_id);
+            msg.as.done.task_id = ntohl(msg.as.done.task_id);
+            break;
+        }
+
+        case MSG_FAILED: {
+            uint32_t id_size = (uint32_t)sizeof(msg.as.failed.task_id);
+
+            if (payload_len < id_size) goto parse_error_nobuf;
+
+            uint32_t reason_len = payload_len - id_size;
+            if (reason_len >= PROTOCOL_MAX_FAIL_REASON_MSG) goto parse_error_nobuf;
+
+            if (protocol_read_exact(conn->fd, &msg.as.failed, id_size + reason_len) <= 0) {
+                conn_close(loop_fd, conn, pool);
+                return;
+            }
+            msg.as.failed.task_id = ntohl(msg.as.failed.task_id);
+            msg.as.failed.reason[reason_len] = '\0';
             break;
         }
 

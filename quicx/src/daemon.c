@@ -21,6 +21,8 @@
 #endif
 #endif
 
+#define TASK_MAX_RETRIES 3
+
 void daemon_handle_message(Connection* conn, Message* msg,
                            Queue* q, WorkerPool* pool) {
     switch (msg->type) {
@@ -34,12 +36,12 @@ void daemon_handle_message(Connection* conn, Message* msg,
 
             t->id               = queue_next_id(q);
             t->status           = TASK_WAITING;
-            t->retries_left     = 3;
+            t->retries_left     = TASK_MAX_RETRIES;
             t->next             = NULL;
-            t->payload          = msg->payload;
-            t->payload_len      = msg->payload_len;
+            t->payload          = msg->as.submit.payload;
+            t->payload_len      = msg->as.submit.payload_len;
             
-            strncpy(t->type, msg->task_type, MAX_TASK_TYPE_SIZE - 1);
+            strncpy(t->type, msg->as.submit.task_type, MAX_TASK_TYPE_SIZE - 1);
             t->type[MAX_TASK_TYPE_SIZE - 1] = '\0';
 
             t->producer_fd = conn->fd;
@@ -69,8 +71,9 @@ void daemon_handle_message(Connection* conn, Message* msg,
         }
 
         case MSG_DONE: {
-            
+
             if (conn->worker) {
+                protocol_send_done(conn->worker->current_fd, msg->as.done.task_id);
                 worker_set_idle(pool, conn->worker);
                 conn->worker->current_fd = -1;
             }
@@ -81,9 +84,9 @@ void daemon_handle_message(Connection* conn, Message* msg,
         }
 
         case MSG_FAILED: {
-            
+
             if (conn->worker) {
-                protocol_send_failed(conn->worker->current_fd, msg->task_id, "Worker Failed");
+                protocol_send_failed(conn->worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
                 conn->worker->current_fd = -1;
                 worker_set_idle(pool, conn->worker);
             }
