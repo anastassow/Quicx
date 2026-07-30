@@ -87,7 +87,6 @@ static void handle_new_connection(int loop_fd, int server_fd) {
 
     conn->fd     = fd;
     conn->type   = CONN_UNKNOWN;
-    conn->worker = NULL;
 
     set_nonblocking(fd);
     set_nodelay(fd);
@@ -239,8 +238,7 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd) {
     if (!conn) { close(fd); return; }
 
     conn->fd     = fd;
-    conn->type   = CONN_UNKNOWN;
-    conn->worker = NULL;
+    conn->type   = CONN_CLI;
 
     set_nonblocking(fd);
     el_add(loop_fd, fd, conn);
@@ -314,16 +312,14 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     /* listening sockets for server */
     static Connection server_conn;
     server_conn.fd     = server_fd;
-    server_conn.type   = CONN_UNKNOWN;
-    server_conn.worker = NULL;
+    server_conn.type   = CONN_SERVER;
     el_add(loop_fd, server_fd, &server_conn);
 
     /* listening sockets for cli */
     static Connection unix_conn;
     if (unix_fd >= 0) {
         unix_conn.fd     = unix_fd;
-        unix_conn.type   = CONN_UNKNOWN;
-        unix_conn.worker = NULL;
+        unix_conn.type   = CONN_CLI;
         el_add(loop_fd, unix_fd, &unix_conn);
     }
 

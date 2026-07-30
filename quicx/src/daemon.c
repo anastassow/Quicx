@@ -63,7 +63,7 @@ void daemon_handle_message(Connection* conn, Message* msg,
                 return;
             }
 
-            conn->worker = w;
+            conn->as.worker.worker = w;
             conn->type = CONN_WORKER;
             try_dispach(q, pool);
 
@@ -72,10 +72,10 @@ void daemon_handle_message(Connection* conn, Message* msg,
 
         case MSG_DONE: {
 
-            if (conn->worker) {
-                protocol_send_done(conn->worker->current_fd, msg->as.done.task_id);
-                worker_set_idle(pool, conn->worker);
-                conn->worker->current_fd = -1;
+            if (conn->as.worker.worker) {
+                protocol_send_done(conn->as.worker.worker->current_fd, msg->as.done.task_id);
+                worker_set_idle(pool, conn->as.worker.worker);
+                conn->as.worker.worker->current_fd = -1;
             }
             stats_task_completed();
             try_dispach(q, pool);
@@ -85,10 +85,10 @@ void daemon_handle_message(Connection* conn, Message* msg,
 
         case MSG_FAILED: {
 
-            if (conn->worker) {
-                protocol_send_failed(conn->worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
-                conn->worker->current_fd = -1;
-                worker_set_idle(pool, conn->worker);
+            if (conn->as.worker.worker) {
+                protocol_send_failed(conn->as.worker.worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
+                conn->as.worker.worker->current_fd = -1;
+                worker_set_idle(pool, conn->as.worker.worker);
             }
             stats_task_failed();
             try_dispach(q, pool);
@@ -145,8 +145,8 @@ void daemon_handle_message(Connection* conn, Message* msg,
 
 void daemon_handle_disconnect(Connection* conn, WorkerPool* pool) {
     
-    if (conn->type == CONN_WORKER && conn->worker) {
-        worker_remove(pool, conn->worker);
-        conn->worker = NULL;
+    if (conn->type == CONN_WORKER && conn->as.worker.worker) {
+        worker_remove(pool, conn->as.worker.worker);
+        conn->as.worker.worker = NULL;
     }
 }
