@@ -7,6 +7,13 @@
 
 #define DEFAULT_PORT 16381
 
+/*
+the built-in defaults carve every size class from ALIGNMENT up to
+MAX_SIZE_OF_SIZE_CLASS, so the pool has to be big enough that even a
+1% slice still holds a usable number of blocks of the largest classes
+*/
+#define DEFAULT_POOL_SIZE (8 * 1024 * 1024)
+
 typedef struct {
     int    port;
     size_t pool_size;
