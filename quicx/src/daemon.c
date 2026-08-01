@@ -1,11 +1,4 @@
-#if defined(__linux__)
-#define _DEFAULT_SOURCE
-#define _BSD_SOURCE
-#define _GNU_SOURCE
-#endif
-#if defined(__APPLE__)
-#define _DARWIN_C_SOURCE
-#endif
+#include "platform.h"
 
 #include "daemon.h"
 #include "protocol.h"
@@ -13,13 +6,6 @@
 #include "dispacher.h"
 #include <string.h>
 #include "stats.h"
-
-#if defined(__linux__)
-#include <endian.h>
-#ifndef htonll
-#define htonll(x) htobe64(x)
-#endif
-#endif
 
 #define TASK_MAX_RETRIES 3
 

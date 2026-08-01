@@ -1,11 +1,4 @@
-#if defined(__linux__)
-#define _DEFAULT_SOURCE
-#define _BSD_SOURCE
-#define _GNU_SOURCE
-#endif
-#if defined(__APPLE__)
-#define _DARWIN_C_SOURCE
-#endif
+#include "platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,13 +11,6 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <ctype.h>
-
-#if defined(__linux__)
-#include <endian.h>
-#ifndef ntohll
-#define ntohll(x) be64toh(x)
-#endif
-#endif
 
 #include "queue.h"
 #include "workers.h"
