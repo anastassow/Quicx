@@ -1,3 +1,5 @@
+#include "platform.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +11,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "protocol.h"
-#include "queue.h"
-#include "workers.h"
 #include "stats.h"
-#include "incPMAD.h"
+#include "quicx.h"
 #include "event_loop.h"
 #include <sys/stat.h>
 
@@ -21,14 +21,13 @@
 
 // ── server ────────────────────────────────────────────────────────────────────
 
-int server_start(int port, Queue* q, WorkerPool* pool);
+int server_start(int port, Quicx* quicx);
 
-static Queue      g_queue;
-static WorkerPool g_pool;
+static Quicx g_quicx;
 
 static void* server_thread(void* arg) {
     (void)arg;
-    server_start(TEST_PORT, &g_queue, &g_pool);
+    server_start(TEST_PORT, &g_quicx);
     return NULL;
 }
 
@@ -80,7 +79,7 @@ static int read_stats(int fd, StatsHeader* hdr,
     r = protocol_read_exact(fd, hdr, sizeof(StatsHeader));
     if (r <= 0) return r;
 
-    uint32_t n = ntohl(hdr->class_count);
+    uint32_t n = hdr->class_count;
     if ((int)n > max) return -1;
     if (n > 0)
         protocol_read_exact(fd, classes,
@@ -149,7 +148,7 @@ static void test_unix_stats_request(void) {
     check("got stats response",      r == 1);
     check("has size classes",        n > 0);
     check("uptime field present",    ntohll(hdr.uptime_seconds) >= 0);
-    check("class_count matches n",   ntohl(hdr.class_count) == (uint32_t)n);
+    check("class_count matches n",   hdr.class_count == (uint32_t)n);
 
     close(fd);
 }
@@ -215,8 +214,8 @@ static void test_unix_multiple_connections(void) {
 
     // all should see same class count
     check("same class count",
-          ntohl(hdr1.class_count) == ntohl(hdr2.class_count) &&
-          ntohl(hdr2.class_count) == ntohl(hdr3.class_count));
+          hdr1.class_count == hdr2.class_count &&
+          hdr2.class_count == hdr3.class_count);
 
     close(fd1);
     close(fd2);
@@ -345,11 +344,11 @@ int main(void) {
 
     size_t sizes[]       = {32, 64, 128, 256, 512, 1024};
     size_t percentages[] = {10, 25,  25,  20,  12,    8};
-    pmad_init(sizes, 6, percentages, 1024 * 1024);
+    pmad_init(&g_quicx.pmad, sizes, 6, percentages, 1024 * 1024);
 
-    stats_init();
-    queue_init(&g_queue);
-    workers_init(&g_pool);
+    stats_init(&g_quicx.stats);
+    queue_init(&g_quicx.queue);
+    workers_init(&g_quicx.pool);
 
     pthread_t srv;
     pthread_create(&srv, NULL, server_thread, NULL);
@@ -375,6 +374,6 @@ int main(void) {
     else
         printf("--- %d tests FAILED ---\n", failed);
 
-    pmad_destroy();
+    pmad_destroy(&g_quicx.pmad);
     return failed == 0 ? 0 : 1;
 }

@@ -16,29 +16,43 @@
 
 #define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 
-// socket helpers-------------------------------------
+/* functions for the sockets */
 
+/* 
+Function to set the connection to nonblocking.
+return immediately (with EAGAIN/EWOULDBLOCK) 
+instead of blocking
+*/
 static int set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) return -1;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
+/* 
+Function to set the socket with no delay.
+Disables Nagle's algorithm.
+*/
 static void set_nodelay(int fd) {
     int flag = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
+/* sets reuse address */
 static void set_reuseaddr(int fd) {
     int flag = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 }
 
-// connection managment------------------------------
+/* connection managment functions */
 
-static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
+/* 
+Function remoove connection from demon from 
+pool and freeing the memory for it.
+*/
+static void conn_close(int loop_fd, Connection* conn, Quicx* quicx) {
 
-    daemon_handle_disconnect(conn, pool);
+    daemon_handle_disconnect(conn, quicx);
 
     el_remove(loop_fd, conn->fd);
 
@@ -46,10 +60,14 @@ static void conn_close(int loop_fd, Connection* conn, WorkerPool* pool) {
 
     printf("connection closed fd=%d\n", conn->fd);
 
-    pmad_free(conn);
+    pmad_free(&quicx->pmad, conn);
 }
 
-static void handle_new_connection(int loop_fd, int server_fd) {
+/* 
+Function that handles a new connection accepting it 
+and allocating a connection and adding it to the pool.
+*/
+static void handle_new_connection(int loop_fd, int server_fd, Quicx* quicx) {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
 
@@ -60,7 +78,7 @@ static void handle_new_connection(int loop_fd, int server_fd) {
         return;
     }
 
-    Connection* conn = (Connection*)pmad_alloc(sizeof(Connection));
+    Connection* conn = (Connection*)pmad_alloc(&quicx->pmad, sizeof(Connection));
     if (!conn) {
         fprintf(stderr, "out of memory for connection\n");
         close(fd);
@@ -69,7 +87,6 @@ static void handle_new_connection(int loop_fd, int server_fd) {
 
     conn->fd     = fd;
     conn->type   = CONN_UNKNOWN;
-    conn->worker = NULL;
 
     set_nonblocking(fd);
     set_nodelay(fd);
@@ -82,19 +99,22 @@ static void handle_new_connection(int loop_fd, int server_fd) {
            ntohs(addr.sin_port));
 }
 
-static void handle_readable(int loop_fd, Connection* conn,
-                             Queue* q, WorkerPool* pool) {
+/*
+Function that reads the message from the protocol and gives it to the deamon.
+Makes nessesary checks and returns a error to the protocol if it fails. 
+*/
+static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
 
     ProtocolHeader hdr;
     int r = protocol_read_exact(conn->fd, &hdr, PROTOCOL_HEADER_SIZE);
     if (r <= 0) {
-        conn_close(loop_fd, conn, pool);
+        conn_close(loop_fd, conn, quicx);
         return;
     }
 
     if (hdr.version != PROTOCOL_VERSION) {
         protocol_send_error(conn->fd, ERR_VERSION_MISMATCH, "bad version");
-        conn_close(loop_fd, conn, pool);
+        conn_close(loop_fd, conn, quicx);
         return;
     }
 
@@ -102,7 +122,7 @@ static void handle_readable(int loop_fd, Connection* conn,
 
     if (payload_len > PROTOCOL_MAX_PAYLOAD) {
         protocol_send_error(conn->fd, ERR_PAYLOAD_TOO_BIG, "payload too large");
-        conn_close(loop_fd, conn, pool);
+        conn_close(loop_fd, conn, quicx);
         return;
     }
 
@@ -112,61 +132,78 @@ static void handle_readable(int loop_fd, Connection* conn,
     msg.type    = (MessageType)hdr.type;
 
     if (msg.type == MSG_SUBMIT) {
-        if (payload_len < 1) goto parse_error_nobuf;
+        uint8_t  type_len_byte;
+        uint32_t len_prefix_size = (uint32_t)sizeof(type_len_byte);
 
-        uint8_t type_len_byte;
-        if (protocol_read_exact(conn->fd, &type_len_byte, 1) <= 0) {
-            conn_close(loop_fd, conn, pool);
+        if (payload_len < len_prefix_size) goto parse_error_nobuf;
+
+        if (protocol_read_exact(conn->fd, &type_len_byte, sizeof(type_len_byte)) <= 0) {
+            conn_close(loop_fd, conn, quicx);
             return;
         }
-        if (type_len_byte >= PROTOCOL_MAX_TYPE_LEN) goto parse_error_nobuf;
-        if (payload_len < 1u + type_len_byte)       goto parse_error_nobuf;
+        if (type_len_byte >= PROTOCOL_MAX_TYPE_LEN)          goto parse_error_nobuf;
+        if (payload_len < len_prefix_size + type_len_byte)   goto parse_error_nobuf;
 
         char task_type[PROTOCOL_MAX_TYPE_LEN];
         if (type_len_byte > 0) {
             if (protocol_read_exact(conn->fd, task_type, type_len_byte) <= 0) {
-                conn_close(loop_fd, conn, pool);
+                conn_close(loop_fd, conn, quicx);
                 return;
             }
         }
         task_type[type_len_byte] = '\0';
 
-        uint32_t real_len    = payload_len - 1u - type_len_byte;
+        uint32_t real_len    = payload_len - len_prefix_size - type_len_byte;
         uint8_t* payload_buf = NULL;
         if (real_len > 0) {
-            payload_buf = (uint8_t*)pmad_alloc(real_len);
+            payload_buf = (uint8_t*)pmad_alloc(&quicx->pmad, real_len);
             if (!payload_buf) {
                 protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
                 return;
             }
             if (protocol_read_exact(conn->fd, payload_buf, (int)real_len) <= 0) {
-                pmad_free(payload_buf);
-                conn_close(loop_fd, conn, pool);
+                pmad_free(&quicx->pmad, payload_buf);
+                conn_close(loop_fd, conn, quicx);
                 return;
             }
         }
 
-        memcpy(msg.task_type, task_type, type_len_byte + 1);
-        msg.payload     = payload_buf;
-        msg.payload_len = real_len;
+        memcpy(msg.as.submit.task_type, task_type, type_len_byte + 1);
+        msg.as.submit.payload     = payload_buf;
+        msg.as.submit.payload_len = real_len;
 
-        daemon_handle_message(conn, &msg, q, pool);
+        daemon_handle_message(conn, &msg, quicx);
         return;
     }
 
-    uint8_t small_buf[8] = {0};
-
     switch (msg.type) {
 
-        case MSG_DONE:
-        case MSG_FAILED: {
-            if (payload_len < 4) goto parse_error_nobuf;
-            if (protocol_read_exact(conn->fd, small_buf, 4) <= 0) {
-                conn_close(loop_fd, conn, pool);
+        case MSG_DONE: {
+            uint32_t id_size = (uint32_t)sizeof(msg.as.done.task_id);
+
+            if (payload_len != id_size) goto parse_error_nobuf;
+            if (protocol_read_exact(conn->fd, &msg.as.done.task_id, sizeof(msg.as.done.task_id)) <= 0) {
+                conn_close(loop_fd, conn, quicx);
                 return;
             }
-            memcpy(&msg.task_id, small_buf, 4);
-            msg.task_id = ntohl(msg.task_id);
+            msg.as.done.task_id = ntohl(msg.as.done.task_id);
+            break;
+        }
+
+        case MSG_FAILED: {
+            uint32_t id_size = (uint32_t)sizeof(msg.as.failed.task_id);
+
+            if (payload_len < id_size) goto parse_error_nobuf;
+
+            uint32_t reason_len = payload_len - id_size;
+            if (reason_len >= PROTOCOL_MAX_FAIL_REASON_MSG) goto parse_error_nobuf;
+
+            if (protocol_read_exact(conn->fd, &msg.as.failed, id_size + reason_len) <= 0) {
+                conn_close(loop_fd, conn, quicx);
+                return;
+            }
+            msg.as.failed.task_id = ntohl(msg.as.failed.task_id);
+            msg.as.failed.reason[reason_len] = '\0';
             break;
         }
 
@@ -182,24 +219,25 @@ static void handle_readable(int loop_fd, Connection* conn,
         }
     }
 
-    daemon_handle_message(conn, &msg, q, pool);
+    daemon_handle_message(conn, &msg, quicx);
     return;
 
+/* go to for wehen a parsing error occurs */
 parse_error_nobuf:
     protocol_send_error(conn->fd, ERR_INVALID_MSG, "parse error");
-    conn_close(loop_fd, conn, pool);
+    conn_close(loop_fd, conn, quicx);
 }
 
-static void handle_new_unix_connection(int loop_fd, int unix_fd) {
+/* Function for connecting a unix socket for the cli */
+static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
     int fd = accept(unix_fd, NULL, NULL);
     if (fd < 0) { perror("accept unix"); return; }
 
-    Connection* conn = (Connection*)pmad_alloc(sizeof(Connection));
+    Connection* conn = (Connection*)pmad_alloc(&quicx->pmad, sizeof(Connection));
     if (!conn) { close(fd); return; }
 
     conn->fd     = fd;
-    conn->type   = CONN_UNKNOWN;
-    conn->worker = NULL;
+    conn->type   = CONN_CLI;
 
     set_nonblocking(fd);
     el_add(loop_fd, fd, conn);
@@ -207,9 +245,9 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd) {
     printf("cli connected fd=%d\n", fd);
 }
 
-int server_start(int port, Queue* q, WorkerPool* pool) {
+int server_start(int port, Quicx* quicx) {
 
-    // TCP socket ────────────────────────────────────────────────────────
+    /* TCP socket */
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("socket");
@@ -240,7 +278,7 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
     printf("quicx listening on port %d [%s]\n",
            port, EL_BACKEND);
 
-    // unix socket for CLI ───────────────────────────────────────────────
+    /* unix socket for CLI */
     int unix_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (unix_fd < 0) {
         perror("unix socket");
@@ -270,21 +308,21 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
         return -1;
     }
 
+    /* listening sockets for server */
     static Connection server_conn;
     server_conn.fd     = server_fd;
-    server_conn.type   = CONN_UNKNOWN;
-    server_conn.worker = NULL;
+    server_conn.type   = CONN_SERVER;
     el_add(loop_fd, server_fd, &server_conn);
 
+    /* listening sockets for cli */
     static Connection unix_conn;
     if (unix_fd >= 0) {
         unix_conn.fd     = unix_fd;
-        unix_conn.type   = CONN_UNKNOWN;
-        unix_conn.worker = NULL;
+        unix_conn.type   = CONN_CLI;
         el_add(loop_fd, unix_fd, &unix_conn);
     }
 
-    // main event loop ───────────────────────────────────────────────────────
+    /* main event loop */
 
     ElEvent events[EL_MAX_EVENTS];
 
@@ -301,11 +339,11 @@ int server_start(int port, Queue* q, WorkerPool* pool) {
             Connection* conn = (Connection*)events[i].ptr;
 
             if (conn->fd == server_fd) {
-                handle_new_connection(loop_fd, server_fd);
+                handle_new_connection(loop_fd, server_fd, quicx);
             } else if (unix_fd >= 0 && conn->fd == unix_fd) {
-                handle_new_unix_connection(loop_fd, unix_fd);
+                handle_new_unix_connection(loop_fd, unix_fd, quicx);
             } else {
-                handle_readable(loop_fd, conn, q, pool);
+                handle_readable(loop_fd, conn, quicx);
             }
         }
     }

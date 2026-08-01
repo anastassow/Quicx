@@ -7,15 +7,16 @@ int main() {
     // init PMAD
     size_t sizes[]       = {64, 128, 256, 512, 1024};
     size_t percentages[] = {40, 20,  20,  10,  10};
-    pmad_init(sizes, 6, percentages, 1024 * 1024);
+    PMAD pmad;
+    pmad_init(&pmad, sizes, 6, percentages, 1024 * 1024);
 
     Queue q;
     queue_init(&q);
 
     // allocate tasks from PMAD — not malloc
-    Task* a = (Task*)pmad_alloc(sizeof(Task));
-    Task* b = (Task*)pmad_alloc(sizeof(Task));
-    Task* c = (Task*)pmad_alloc(sizeof(Task));
+    Task* a = (Task*)pmad_alloc(&pmad, sizeof(Task));
+    Task* b = (Task*)pmad_alloc(&pmad, sizeof(Task));
+    Task* c = (Task*)pmad_alloc(&pmad, sizeof(Task));
 
     // set IDs
     a->id = queue_next_id(&q);  // 1
@@ -52,11 +53,11 @@ int main() {
     printf("size after 3 pops:  %d (expect 0)\n", queue_size(&q));
 
     // free back to PMAD
-    pmad_free(a);
-    pmad_free(b);
-    pmad_free(c);
+    pmad_free(&pmad, a);
+    pmad_free(&pmad, b);
+    pmad_free(&pmad, c);
 
-    pmad_destroy();
+    pmad_destroy(&pmad);
 
     printf("\nall tests passed\n");
     return 0;

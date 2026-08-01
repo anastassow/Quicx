@@ -8,23 +8,20 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "protocol.h"
-#include "queue.h"
-#include "workers.h"
-#include "incPMAD.h"
+#include "quicx.h"
 #include "event_loop.h"
 
 #define TEST_PORT 16381
 
 // ── server ────────────────────────────────────────────────────────────────────
 
-int server_start(int port, Queue* q, WorkerPool* pool);
+int server_start(int port, Quicx* quicx);
 
-static Queue      g_queue;
-static WorkerPool g_pool;
+static Quicx g_quicx;
 
 static void* server_thread(void* arg) {
     (void)arg;
-    server_start(TEST_PORT, &g_queue, &g_pool);
+    server_start(TEST_PORT, &g_quicx);
     return NULL;
 }
 
@@ -426,10 +423,10 @@ int main(void) {
 
     size_t sizes[]       = {32, 64, 128, 256, 512, 1024};
     size_t percentages[] = {10, 25, 25,  20,  12,  8};
-    pmad_init(sizes, 6, percentages, 1024 * 1024);
+    pmad_init(&g_quicx.pmad, sizes, 6, percentages, 1024 * 1024);
 
-    queue_init(&g_queue);
-    workers_init(&g_pool);
+    queue_init(&g_quicx.queue);
+    workers_init(&g_quicx.pool);
 
     pthread_t srv;
     pthread_create(&srv, NULL, server_thread, NULL);
@@ -454,6 +451,6 @@ int main(void) {
     else
         printf("--- %d tests FAILED ---\n", failed);
 
-    pmad_destroy();
+    pmad_destroy(&g_quicx.pmad);
     return failed == 0 ? 0 : 1;
 }

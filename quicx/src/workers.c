@@ -47,8 +47,8 @@ void workers_init(WorkerPool* pool) {
     pool->next_id = 1;
 }
 
-Worker* worker_add(WorkerPool* pool, int fd) {
-    Worker* w = (Worker*)pmad_alloc(sizeof(Worker));
+Worker* worker_add(WorkerPool* pool, PMAD* pmad, int fd) {
+    Worker* w = (Worker*)pmad_alloc(pmad, sizeof(Worker));
     if (!w) return NULL;
 
     w->fd      = fd;
@@ -78,14 +78,14 @@ void worker_set_idle(WorkerPool* pool, Worker* w) {
     list_push(&pool->idle_head, &pool->idle_tail, &pool->idle_count, w);
 }
 
-void worker_remove(WorkerPool* pool, Worker* w) {
+void worker_remove(WorkerPool* pool, PMAD* pmad, Worker* w) {
     if (w->is_idle) {
         list_remove(&pool->idle_head, &pool->idle_tail, &pool->idle_count, w);
     } else {
         list_remove(&pool->busy_head, &pool->busy_tail, &pool->busy_count, w);
     }
 
-    pmad_free(w);
+    pmad_free(pmad, w);
 }
 
 void worker_return_idle(WorkerPool* pool, Worker* w) {

@@ -1,16 +1,23 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+/* values for the protocol */
 #define PROTOCOL_VERSION        1
 #define PROTOCOL_HEADER_SIZE    6
-#define PROTOCOL_MAX_PAYLOAD    (1024 * 1024)
+#define PROTOCOL_MAX_PAYLOAD    1024
 #define PROTOCOL_MAX_TYPE_LEN   32
 #define PROTOCOL_HEARTBEAT_MS   5000
 #define PROTOCOL_TIMEOUT_MS     15000
+#define PROTOCOL_MAX_ERROR_MSG  64
+#define PROTOCOL_MAX_FAIL_REASON_MSG 64
 
 #include <stdint.h>
 #include <stddef.h>
 
+/* 
+This is a enum for all possible messages
+that could be send from the protocol.
+*/
 typedef enum {
     MSG_SUBMIT          = 0x01,
     MSG_OK              = 0x02,
@@ -26,6 +33,7 @@ typedef enum {
     MSG_STATS_RESPONSE  = 0x0C,
 } MessageType;
 
+/* Protocol error codes */
 typedef enum {
     ERR_NONE             = 0x00,
     ERR_QUEUE_FULL       = 0x01,
@@ -35,6 +43,10 @@ typedef enum {
     ERR_VERSION_MISMATCH = 0x05,
 } ErrorCode;
 
+/*
+Header of the protocol.
+Made packed. No padding.
+*/
 typedef struct __attribute__((packed)) {
     uint8_t     version;
     uint8_t     type;
@@ -43,26 +55,66 @@ typedef struct __attribute__((packed)) {
 
 _Static_assert(sizeof(ProtocolHeader) == 6, "Header must be exactly 6 bytes");
 
+/* Structure for submit messages's body */
 typedef struct {
-    MessageType  type;
-    uint8_t      version;
-    ErrorCode    error_code;
-    uint32_t     task_id;
-    char         task_type[PROTOCOL_MAX_TYPE_LEN];
-    uint8_t*     payload; // read buffer only
-    uint32_t     payload_len;
-    char         error_msg[64];
+    char     task_type[PROTOCOL_MAX_TYPE_LEN];  /* user defined what that task is for */
+    uint8_t* payload;                           /* read buffer for the payload from the task*/
+    uint32_t payload_len;                       /* the length of the payload */
+} SubmitBody;
+
+/* struct for the body of the Ok message */
+typedef struct {
+    uint32_t task_id;   /* id of the task that is finished */
+} OkBody;
+
+/* struct for the body of the Error message */
+typedef struct {
+    ErrorCode   error_code;                         /* error code when it fails */
+    char        error_msg[PROTOCOL_MAX_ERROR_MSG];  /* the error message from the user */
+} ErrorBody;
+
+/* struct for the body of the Task message */
+typedef struct {
+    uint32_t task_id;                               /* identifier for the task */
+    char     task_type[PROTOCOL_MAX_TYPE_LEN];      /* user defined what that task is for */
+    uint8_t* payload;                               /* read buffer for the payload from the task*/
+    uint32_t payload_len;                           /* the length of the payload */
+} TaskBody;
+
+/* struct for the body of the Done message */
+typedef struct {
+    uint32_t task_id;   /* id of the task that is finished */
+} DoneBody;
+
+typedef struct {
+    uint32_t    task_id;                                /* id of the failed task */
+    char        reason[PROTOCOL_MAX_FAIL_REASON_MSG];   /* reason why task failed */
+} FailedBody;
+
+/*
+Struct that is used to send a message.
+For now it is one struct for every type of message.
+*/
+typedef struct {
+    MessageType  type;      /* type of the message */
+    uint8_t      version;   /* version of the message */
+    union {
+        SubmitBody  submit;
+        OkBody      ok;
+        TaskBody    task;
+        ErrorBody   error;
+        DoneBody    done;
+        FailedBody  failed;
+    } as;
 } Message;
 
-
-// read / write-------------------------------------------------
-
-// read exactly n bytes — loops until all received or error
-// returns n on success, 0 on disconnect, -1 on error
+/*
+read exactly n bytes — loops until all received or error
+returns n on success, 0 on disconnect, -1 on error
+*/
 int protocol_read_exact(int fd, void* buf, int n);
 
-// sending--------------------------------------------------------------------
-
+/* Functions to send different messages through the protocol */
 int protocol_send_submit(int fd, const char* type, const uint8_t* payload, uint32_t payload_len);
 int protocol_send_ok(int fd, uint32_t task_id);
 int protocol_send_error(int fd, ErrorCode code, const char* reason);

@@ -1,0 +1,22 @@
+This is a text file with all the stats that Quicx has
+
+
+Subsystem  Variable          Struct      C type    Kind      Cardinality     Tells you
+---------  ----------------  ----------  --------  --------  --------------  ---------
+Tasks      tasks_submitted   Stats       uint64_t  counter   per shard       total accepted since start
+           tasks_completed   Stats       uint64_t  counter   per shard       total finished OK
+           tasks_failed      Stats       uint64_t  counter   per shard       total reported failed
+           count             Queue       uint32_t  gauge     per shard       tasks waiting right now
+
+Workers    idle_count        WorkerPool  uint32_t  gauge     per shard       workers free right now
+           busy_count        WorkerPool  uint32_t  gauge     per shard       workers running a task
+
+Memory     allocated_blocks  SizeClass   uint32_t  gauge     per class (×N)  blocks handed out in this class
+           used              MemoryPool  size_t    gauge     per pool        bytes committed — metadata + live blocks
+           total_blocks      SizeClass   uint32_t  constant  per class (×N)  blocks carved at split — denominator for allocated_blocks
+           block_size        SizeClass   size_t    constant  per class (×N)  payload bytes per block in this class
+           size              MemoryPool  size_t    constant  per pool        usable capacity — denominator for used
+           num_size_classes  PMAD        uint8_t   constant  per shard       how many classes exist
+           pool_size         PMAD        size_t    constant  per shard       bytes originally requested from the OS
+
+Time       start_time        Stats       time_t    constant  per shard       sole basis of uptime
