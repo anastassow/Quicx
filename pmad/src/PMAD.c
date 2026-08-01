@@ -127,7 +127,7 @@ PmadStatus PMAD_alloc(PMAD* pmad, size_t size, void** allocated_block_pointer) {
     sc->free_list = block->next;
     sc->allocated_blocks++;
 
-    pmad->pool_head->used += aligned;
+    pmad->pool_head->used += sc->block_size;
 
     *allocated_block_pointer = (uint8_t*)block + sizeof(BlockHeader);
     return PMAD_OK;
@@ -159,7 +159,7 @@ PmadStatus PMAD_free(PMAD* pmad, void* memoryToFree) {
     sc->free_list = block;
     sc->allocated_blocks--;
 
-    pmad->pool_head->used -= pmad->size_classes[block->size_class].block_size;
+    pmad->pool_head->used -= sc->block_size;
 
     return PMAD_OK;
 }
