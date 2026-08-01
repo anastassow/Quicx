@@ -23,7 +23,9 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/event_loop.c \
              quicx/src/server.c \
              quicx/src/daemon.c \
-             quicx/src/stats.c
+             quicx/src/stats.c \
+             quicx/src/cli.c \
+             quicx/src/config.c
 
 all: quicxd test_queue test_workers test_dispatcher \
      test_protocol test_server
