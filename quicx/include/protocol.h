@@ -4,7 +4,7 @@
 /* values for the protocol */
 #define PROTOCOL_VERSION        1
 #define PROTOCOL_HEADER_SIZE    6
-#define PROTOCOL_MAX_PAYLOAD    (1024 * 1024)
+#define PROTOCOL_MAX_PAYLOAD    1024
 #define PROTOCOL_MAX_TYPE_LEN   32
 #define PROTOCOL_HEARTBEAT_MS   5000
 #define PROTOCOL_TIMEOUT_MS     15000
