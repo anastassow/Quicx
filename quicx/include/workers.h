@@ -39,7 +39,7 @@ typedef struct {
 void    workers_init(WorkerPool* pool);
 
 /* Function to add a worker */
-Worker* worker_add(WorkerPool* pool, int fd);
+Worker* worker_add(WorkerPool* pool, PMAD* pmad, int fd);
 
 /* Function to het a idle worker */
 Worker* worker_get_idle(WorkerPool* pool);
@@ -51,7 +51,7 @@ void    worker_set_idle(WorkerPool* pool, Worker* w);
 void    worker_set_busy(WorkerPool* pool, Worker* w);
 
 /* Function to remoove a worker */
-void    worker_remove(WorkerPool* peel, Worker* w);
+void    worker_remove(WorkerPool* peel, PMAD* pmad, Worker* w);
 
 /* Function to return a worker to idle */
 void    worker_return_idle(WorkerPool* pool, Worker* w);

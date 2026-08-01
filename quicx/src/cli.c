@@ -164,14 +164,8 @@ int cmd_start(int argc, char* argv[]) {
         printf(" %zu", c.sizes[i]);
     printf("\n");
 
-    pmad_init(c.sizes, c.class_count, c.percentages, c.pool_size);
-    stats_init();
-
-    static Queue q;
-    static WorkerPool pool;
-
-    queue_init(&q);
-    workers_init(&pool);
+    static Quicx quicx;
+    quicx_init(&quicx, &c);
 
     FILE* pf = fopen(PID_FILE, "w");
     if (pf) {
@@ -179,9 +173,9 @@ int cmd_start(int argc, char* argv[]) {
         fclose(pf);
     }
 
-    int r = server_start(c.port, &q, &pool);
+    int r = server_start(c.port, &quicx);
 
-    pmad_destroy();
+    quicx_destroy(&quicx);
     unlink(PID_FILE);
     return r;
 }

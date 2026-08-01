@@ -2,8 +2,7 @@
 #define SERVER_H
 
 #include <stdint.h>
-#include "workers.h"
-#include "queue.h"
+#include "quicx.h"
 
 #define MAX_CONNECTIONS 1024
 
@@ -33,9 +32,9 @@ typedef struct Connection {
 _Static_assert(sizeof(Connection) == 16, "Connection struct is not 16");
 
 /*
-Function that starts the server on 
-a given port with the given pool and queue.
+Function that starts the server on
+a given port using the given Quicx context (its pmad, queue and pool).
 */
-int server_start(int port, Queue* q, WorkerPool* pool);
+int server_start(int port, Quicx* quicx);
 
 #endif

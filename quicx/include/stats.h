@@ -5,7 +5,7 @@
 #include <time.h>
 #include <arpa/inet.h>
 
-/* internal counters — host byte order — lives in stats.c as static global */
+/* internal counters — host byte order — owned by the Quicx it belongs to */
 typedef struct {
     uint64_t tasks_submitted;
     uint64_t tasks_completed;
@@ -37,18 +37,15 @@ typedef struct __attribute__((packed)) {
 } StatsClass;
 
 /* function for initializing the Stats struct*/
-void   stats_init(void);
+void stats_init(Stats* s);
 
 /* function for incrementing submitted tasks */
-void   stats_task_submitted(void);
+void stats_task_submitted(Stats* s);
 
 /* function for completed submitted tasks */
-void   stats_task_completed(void);
+void stats_task_completed(Stats* s);
 
 /* function for incrementing failed tasks */
-void   stats_task_failed(void);
-
-/* getter for stats information */
-Stats* stats_get(void);
+void stats_task_failed(Stats* s);
 
 #endif

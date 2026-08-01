@@ -6,15 +6,16 @@ int main() {
     // init PMAD
     size_t sizes[]       = {32, 64, 128, 256, 512};
     size_t percentages[] = {40, 20, 20,  10,  10};
-    pmad_init(sizes, 6, percentages, 1024 * 1024);
+    PMAD pmad;
+    pmad_init(&pmad, sizes, 6, percentages, 1024 * 1024);
 
     WorkerPool pool;
     workers_init(&pool);
 
     // add three workers with fake fds
-    Worker* a = worker_add(&pool, 10);
-    Worker* b = worker_add(&pool, 20);
-    Worker* c = worker_add(&pool, 30);
+    Worker* a = worker_add(&pool, &pmad, 10);
+    Worker* b = worker_add(&pool, &pmad, 20);
+    Worker* c = worker_add(&pool, &pmad, 30);
 
     printf("idle: %d (expect 3)\n", workers_idle_count(&pool));
     printf("busy: %d (expect 0)\n", workers_busy_count(&pool));
@@ -34,17 +35,17 @@ int main() {
     printf("busy: %d (expect 0)\n", workers_busy_count(&pool));
 
     // worker disconnects
-    worker_remove(&pool, b);
+    worker_remove(&pool, &pmad, b);
 
     printf("idle: %d (expect 2)\n", workers_idle_count(&pool));
 
     // cleanup
-    worker_remove(&pool, a);
-    worker_remove(&pool, c);
+    worker_remove(&pool, &pmad, a);
+    worker_remove(&pool, &pmad, c);
 
     printf("idle: %d (expect 0)\n", workers_idle_count(&pool));
 
-    pmad_destroy();
+    pmad_destroy(&pmad);
     printf("\nall tests passed\n");
     return 0;
 }

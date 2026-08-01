@@ -25,7 +25,8 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/daemon.c \
              quicx/src/stats.c \
              quicx/src/cli.c \
-             quicx/src/config.c
+             quicx/src/config.c \
+             quicx/src/quicx.c
 
 all: quicxd test_queue test_workers test_dispatcher \
      test_protocol test_server
@@ -37,42 +38,42 @@ quicxd:
 
 test_daemon:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_daemon.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/tests/test_daemon.c $(QUICX_CORE) $(PMAD_SRC) \
 	-o $@ -lpthread
 
 test_queue:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_queue.c quicx/src/queue.c $(PMAD_SRC) \
+	quicx/src/tests/test_queue.c quicx/src/queue.c $(PMAD_SRC) \
 	-o $@
 
 test_workers:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_workers.c quicx/src/workers.c quicx/src/queue.c $(PMAD_SRC) \
+	quicx/src/tests/test_workers.c quicx/src/workers.c quicx/src/queue.c $(PMAD_SRC) \
 	-o $@
 
 test_dispatcher:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_dispatcher.c quicx/src/queue.c quicx/src/workers.c quicx/src/dispacher.c quicx/src/protocol.c $(PMAD_SRC) \
+	quicx/src/tests/test_dispatcher.c quicx/src/queue.c quicx/src/workers.c quicx/src/dispacher.c quicx/src/protocol.c $(PMAD_SRC) \
 	-o $@
 
 test_protocol:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_protocol.c quicx/src/protocol.c \
+	quicx/src/tests/test_protocol.c quicx/src/protocol.c \
 	-o $@ -lpthread
 
 test_server:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_server.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/tests/test_server.c $(QUICX_CORE) $(PMAD_SRC) \
 	-o $@ -lpthread
 
 test_stats:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_stats.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/tests/test_stats.c $(QUICX_CORE) $(PMAD_SRC) \
 	-o $@ -lpthread
 
 test_unix:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/test_unix.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/tests/test_unix.c $(QUICX_CORE) $(PMAD_SRC) \
 	-o $@ -lpthread
 
 test: all

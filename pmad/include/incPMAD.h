@@ -20,28 +20,28 @@ _Static_assert(sizeof(PmadClassStats) == 12, "Size of PmadClassStats is not 12")
 Function that initializes PMAD and makes it fully prepared for allocations.
 Calls get_memory_pool_from_os, attach_new_pool, PMAD_init and split_pool_by_percentage.
 */
-PmadStatus pmad_init(const size_t* class_sizes, uint8_t num_size_classes,
+PmadStatus pmad_init(PMAD* pmad, const size_t* class_sizes, uint8_t num_size_classes,
                      const size_t* percentages, size_t pool_size);
 
 /*
 Wrapper function of PMAD_alloc.
 Includes error handling and make the interface better.
 */
-void* pmad_alloc(size_t size);
+void* pmad_alloc(PMAD* pmad, size_t size);
 
 /*
 Wrapper function of PMAD_free in order PMAD to be with a good interface.
 */
-PmadStatus pmad_free(void* ptr);
+PmadStatus pmad_free(PMAD* pmad, void* ptr);
 
 /*
 Function that frees all of the memory in the pools.
 */
-PmadStatus pmad_destroy(void);
+PmadStatus pmad_destroy(PMAD* pmad);
 
 /*
 Function that fills out a out with stats from PMAD.
 */
-int pmad_get_stats(PmadClassStats* out, int max_classes);
+int pmad_get_stats(PMAD* pmad, PmadClassStats* out, int max_classes);
 
 #endif
