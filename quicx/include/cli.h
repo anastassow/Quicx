@@ -3,7 +3,7 @@
 
 #include "stats.h"
 
-#define VERSION          "1.0.2"
+#define VERSION          "1.0.3"
 #define PID_FILE         "/tmp/quicx.pid"
 
 /* unix socket the daemon listens on — cli connects here for stats requests */
