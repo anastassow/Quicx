@@ -93,15 +93,21 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
             PmadClassStats classes[MAX_PMAD_CLASSES];
             int n = pmad_get_stats(&quicx->pmad, classes, MAX_PMAD_CLASSES);
 
+            MemoryPool* mp = quicx->pmad.pool_head;
+
             StatsHeader hdr;
-            hdr.idle_workers    = htonl((uint32_t)workers_idle_count(&quicx->pool));
-            hdr.busy_workers    = htonl((uint32_t)workers_busy_count(&quicx->pool));
-            hdr.queued_tasks    = htonl((uint32_t)queue_size(&quicx->queue));
-            hdr.tasks_submitted = htonll(s->tasks_submitted);
-            hdr.tasks_completed = htonll(s->tasks_completed);
-            hdr.tasks_failed    = htonll(s->tasks_failed);
-            hdr.uptime_seconds  = htonll((uint64_t)(time(NULL) - s->start_time));
-            hdr.class_count     = (uint8_t)n;
+            hdr.idle_workers       = htonl((uint32_t)workers_idle_count(&quicx->pool));
+            hdr.busy_workers       = htonl((uint32_t)workers_busy_count(&quicx->pool));
+            hdr.queued_tasks       = htonl((uint32_t)queue_size(&quicx->queue));
+            hdr.workers_registered = htonl(quicx->pool.next_id - 1);
+            hdr.tasks_submitted    = htonll(s->tasks_submitted);
+            hdr.tasks_completed    = htonll(s->tasks_completed);
+            hdr.tasks_failed       = htonll(s->tasks_failed);
+            hdr.uptime_seconds     = htonll((uint64_t)(time(NULL) - s->start_time));
+            hdr.pool_size          = htonll((uint64_t)quicx->pmad.pool_size);
+            hdr.usable_bytes       = htonll(mp ? (uint64_t)mp->size : 0);
+            hdr.used_bytes         = htonll(mp ? (uint64_t)mp->used : 0);
+            hdr.class_count        = (uint8_t)n;
 
             StatsClass sc[MAX_PMAD_CLASSES];
             for (int i = 0; i < n; i++) {

@@ -15,16 +15,20 @@ returns a connected fd on success, -1 on error (prints diagnostic)
 */
 int cli_connect(void);
 
+/* cli_read_stats: daemon replied in a format this build cannot parse */
+#define CLI_STATS_VERSION_MISMATCH (-2) 
+
 /*
 reads a MSG_STATS_RESPONSE from fd into hdr/classes (max entries)
-returns 1 on success, -1 on error; class count is written to *count
+returns 1 on success, CLI_STATS_VERSION_MISMATCH on a protocol/layout
+mismatch, -1 on any other error; class count is written to *count
 */
 int cli_read_stats(int fd, StatsHeader* hdr,
                     StatsClass* classes, int max,
                     int* count);
 
 /* pretty-prints a stats snapshot to stdout */
-void cli_print_stats(const char* version, StatsHeader* hdr,
+void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
                       StatsClass* classes, int n);
 
 /* command handlers, one per quicx subcommand */

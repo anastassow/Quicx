@@ -47,8 +47,15 @@ int cli_read_stats(int fd, StatsHeader* hdr,
     if (protocol_read_exact(fd, &phdr, PROTOCOL_HEADER_SIZE) <= 0)
         return -1;
 
+    if (phdr.version != PROTOCOL_VERSION)
+        return CLI_STATS_VERSION_MISMATCH;
+
     if ((MessageType)phdr.type != MSG_STATS_RESPONSE)
         return -1;
+
+    uint32_t body_len = ntohl(phdr.length);
+    if (body_len < sizeof(StatsHeader))
+        return CLI_STATS_VERSION_MISMATCH;
 
     if (protocol_read_exact(fd, hdr, sizeof(StatsHeader)) <= 0)
         return -1;
@@ -56,83 +63,140 @@ int cli_read_stats(int fd, StatsHeader* hdr,
     uint32_t n = hdr->class_count;
     if ((int)n > max) return -1;
 
-    if (n > 0)
-        protocol_read_exact(fd, classes,
-                            (int)(n * sizeof(StatsClass)));
+    if (body_len != sizeof(StatsHeader) + n * sizeof(StatsClass))
+        return CLI_STATS_VERSION_MISMATCH;
+
+    if (n > 0 && protocol_read_exact(fd, classes,
+                                     (int)(n * sizeof(StatsClass))) <= 0)
+        return -1;
 
     *count = (int)n;
     return 1;
 }
 
-void cli_print_stats(const char* version, StatsHeader* hdr,
-                      StatsClass* classes, int n) {
-    uint32_t idle      = ntohl(hdr->idle_workers);
-    uint32_t busy      = ntohl(hdr->busy_workers);
-    uint32_t queued    = ntohl(hdr->queued_tasks);
-    uint64_t submitted = ntohll(hdr->tasks_submitted);
-    uint64_t completed = ntohll(hdr->tasks_completed);
-    uint64_t failed    = ntohll(hdr->tasks_failed);
-    uint64_t uptime    = ntohll(hdr->uptime_seconds);
+#define BAR_WIDTH 20
 
-    uint64_t hours   = uptime / 3600;
-    uint64_t minutes = (uptime % 3600) / 60;
-    uint64_t seconds = uptime % 60;
+/* renders "1.00 MiB" / "999.9 KiB" / "512 B" into buf */
+static void fmt_bytes(char* buf, size_t cap, uint64_t bytes) {
+    if (bytes >= 1024ULL * 1024ULL)
+        snprintf(buf, cap, "%.2f MiB", (double)bytes / (1024.0 * 1024.0));
+    else if (bytes >= 1024ULL)
+        snprintf(buf, cap, "%.1f KiB", (double)bytes / 1024.0);
+    else
+        snprintf(buf, cap, "%llu B", (unsigned long long)bytes);
+}
 
-    uint64_t total_bytes = 0;
-    uint64_t used_bytes  = 0;
+/* renders 12847 as "12,847" into buf */
+static void fmt_count(char* buf, size_t cap, uint64_t v) {
+    char digits[32];
+    int  len = snprintf(digits, sizeof(digits), "%llu", (unsigned long long)v);
+    int  out = 0;
 
-    for (int i = 0; i < n; i++) {
-        uint32_t bs  = ntohl(classes[i].block_size);
-        uint32_t tot = ntohl(classes[i].total_blocks);
-        uint32_t use = ntohl(classes[i].allocated_blocks);
-        total_bytes += (uint64_t)bs * tot;
-        used_bytes  += (uint64_t)bs * use;
+    for (int i = 0; i < len && out < (int)cap - 1; i++) {
+        if (i > 0 && (len - i) % 3 == 0) buf[out++] = ',';
+        buf[out++] = digits[i];
     }
+    buf[out] = '\0';
+}
 
-    printf("\n");
-    printf("  quicx v%s\n", version);
-    printf("  ─────────────────────────────────────────\n");
-    printf("  uptime     %lluh %llum %llus\n",
-           (unsigned long long)hours,
-           (unsigned long long)minutes,
-           (unsigned long long)seconds);
+/* fraction as a filled/empty block bar; den 0 renders empty */
+static void print_bar(uint64_t num, uint64_t den) {
+    int fill = den > 0 ? (int)((num * BAR_WIDTH) / den) : 0;
+    if (fill > BAR_WIDTH) fill = BAR_WIDTH;
 
-    printf("\n");
-    printf("  workers    idle: %-4u  busy: %-4u  total: %u\n",
-           idle, busy, idle + busy);
-    printf("  queue      waiting: %u\n", queued);
+    for (int i = 0; i < BAR_WIDTH; i++)
+        printf("%s", i < fill ? "█" : "░");
+}
 
-    printf("\n");
-    printf("  tasks      submitted: %llu\n",
-           (unsigned long long)submitted);
-    printf("             completed: %llu\n",
-           (unsigned long long)completed);
-    printf("             failed:    %llu\n",
-           (unsigned long long)failed);
+static double pct_of(uint64_t num, uint64_t den) {
+    return den > 0 ? (double)num * 100.0 / (double)den : 0.0;
+}
 
-    printf("\n");
-    printf("  memory     %llu / %llu bytes (%.1f%%)\n",
-           (unsigned long long)used_bytes,
-           (unsigned long long)total_bytes,
-           total_bytes > 0
-               ? (double)used_bytes * 100.0 / (double)total_bytes
-               : 0.0);
+void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
+                      StatsClass* classes, int n) {
+    uint32_t idle       = ntohl(hdr->idle_workers);
+    uint32_t busy       = ntohl(hdr->busy_workers);
+    uint32_t queued     = ntohl(hdr->queued_tasks);
+    uint32_t registered = ntohl(hdr->workers_registered);
+    uint64_t submitted  = ntohll(hdr->tasks_submitted);
+    uint64_t completed  = ntohll(hdr->tasks_completed);
+    uint64_t failed     = ntohll(hdr->tasks_failed);
+    uint64_t uptime     = ntohll(hdr->uptime_seconds);
+    uint64_t pool_size  = ntohll(hdr->pool_size);
+    uint64_t usable     = ntohll(hdr->usable_bytes);
+    uint64_t used       = ntohll(hdr->used_bytes);
 
-    printf("\n");
-    printf("  PMAD:\n");
+    /*
+    a task is in flight from the MSG_SUBMIT ack until a worker reports it
+    done or failed, so it is either queued or held by a busy worker. signed
+    because the counters can disagree if a task went missing.
+    */
+    int64_t in_flight = (int64_t)submitted - (int64_t)completed - (int64_t)failed;
+
+    char nbuf[32], b1[32], b2[32];
+
+    printf("\n  quicx v%s  ·  pid %d  ·  up %lluh %llum %02llus\n\n",
+           version, pid,
+           (unsigned long long)(uptime / 3600),
+           (unsigned long long)((uptime % 3600) / 60),
+           (unsigned long long)(uptime % 60));
+
+    /* tasks */
+    fmt_count(nbuf, sizeof(nbuf), submitted);
+    printf("  tasks     submitted  %10s\n", nbuf);
+
+    fmt_count(nbuf, sizeof(nbuf), completed);
+    printf("            completed  %10s   ", nbuf);
+    print_bar(completed, submitted);
+    printf("   %5.1f%%\n", pct_of(completed, submitted));
+
+    fmt_count(nbuf, sizeof(nbuf), failed);
+    printf("            failed     %10s%*s%5.1f%%\n",
+           nbuf, BAR_WIDTH + 6, "", pct_of(failed, submitted));
+
+    fmt_count(nbuf, sizeof(nbuf), in_flight < 0 ? 0 : (uint64_t)in_flight);
+    printf("            in flight  %10s   = %u queued + %u running\n",
+           nbuf, queued, busy);
+
+    fmt_count(nbuf, sizeof(nbuf), queued);
+    printf("            queued     %10s\n\n", nbuf);
+
+    /* workers */
+    fmt_count(nbuf, sizeof(nbuf), busy);
+    printf("  workers   busy       %10s   ", nbuf);
+    print_bar(busy, (uint64_t)idle + busy);
+    printf("   %5.1f%%\n", pct_of(busy, (uint64_t)idle + busy));
+
+    fmt_count(nbuf, sizeof(nbuf), idle);
+    printf("            idle       %10s\n", nbuf);
+
+    fmt_count(nbuf, sizeof(nbuf), (uint64_t)idle + busy);
+    printf("            total      %10s   · %u registered since start\n\n",
+           nbuf, registered);
+
+    /* memory — pad the byte pair so the bar lands in the shared column */
+    char pair[48];
+    fmt_bytes(b1, sizeof(b1), used);
+    fmt_bytes(b2, sizeof(b2), pool_size);
+    snprintf(pair, sizeof(pair), "%s / %s", b1, b2);
+    printf("  memory    %-21s   ", pair);
+    print_bar(used, pool_size);
+    printf("   %5.1f%%\n", pct_of(used, pool_size));
+
+    fmt_bytes(b1, sizeof(b1), usable);
+    printf("            usable %s · %d size class%s\n\n",
+           b1, n, n == 1 ? "" : "es");
 
     for (int i = 0; i < n; i++) {
         uint32_t bs  = ntohl(classes[i].block_size);
         uint32_t tot = ntohl(classes[i].total_blocks);
         uint32_t use = ntohl(classes[i].allocated_blocks);
 
-        int bar  = 20;
-        int fill = tot > 0 ? (int)((uint64_t)use * bar / tot) : 0;
-
-        printf("    %4uB  [", bs);
-        for (int b = 0; b < bar; b++)
-            printf("%s", b < fill ? "█" : "░");
-        printf("]  %u / %u\n", use, tot);
+        fmt_count(b1, sizeof(b1), use);
+        fmt_count(b2, sizeof(b2), tot);
+        printf("         %5uB  %7s / %7s  ", bs, b1, b2);
+        print_bar(use, tot);
+        printf("   %5.1f%%\n", pct_of(use, tot));
     }
 
     printf("\n");
@@ -214,12 +278,27 @@ int cmd_status(void) {
     int r = cli_read_stats(fd, &hdr, classes, MAX_PMAD_CLASSES, &n);
     close(fd);
 
+    if (r == CLI_STATS_VERSION_MISMATCH) {
+        fprintf(stderr,
+                "error: daemon speaks a different stats format\n"
+                "       this is quicx v%s — restart the daemon to match\n",
+                VERSION);
+        return 1;
+    }
+
     if (r < 0) {
         fprintf(stderr, "failed to read stats\n");
         return 1;
     }
 
-    cli_print_stats(VERSION, &hdr, classes, n);
+    int pid = 0;
+    FILE* pf = fopen(PID_FILE, "r");
+    if (pf) {
+        if (fscanf(pf, "%d", &pid) != 1) pid = 0;
+        fclose(pf);
+    }
+
+    cli_print_stats(VERSION, pid, &hdr, classes, n);
     return 0;
 }
 

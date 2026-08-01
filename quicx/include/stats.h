@@ -19,15 +19,21 @@ all fields network byte order
 followed by class_count * StatsClass entries
 */
 typedef struct __attribute__((packed)) {
-    uint32_t idle_workers;      /* idle workers count */
-    uint32_t busy_workers;      /* busy workers count */
-    uint32_t queued_tasks;      /* qued tasks count*/
-    uint64_t tasks_submitted;   /* submitte tasks count */
-    uint64_t tasks_completed;   /* completed tasks count */
-    uint64_t tasks_failed;      /* failed tasks count */
-    uint64_t uptime_seconds;    /* uptime in seconds */
-    uint8_t  class_count;       /* classes count in PMAD */
+    uint32_t idle_workers;       /* idle workers count */
+    uint32_t busy_workers;       /* busy workers count */
+    uint32_t queued_tasks;       /* qued tasks count*/
+    uint32_t workers_registered; /* workers ever registered — pool next_id - 1 */
+    uint64_t tasks_submitted;    /* submitte tasks count */
+    uint64_t tasks_completed;    /* completed tasks count */
+    uint64_t tasks_failed;       /* failed tasks count */
+    uint64_t uptime_seconds;     /* uptime in seconds */
+    uint64_t pool_size;          /* bytes requested from the OS */
+    uint64_t usable_bytes;       /* pool bytes left after the metadata carve out */
+    uint64_t used_bytes;         /* committed bytes — metadata + live blocks */
+    uint8_t  class_count;        /* classes count in PMAD */
 } StatsHeader;
+
+_Static_assert(sizeof(StatsHeader) == 73, "StatsHeader wire size changed");
 
 /* structure for information from PMAD */
 typedef struct __attribute__((packed)) {
