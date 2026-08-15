@@ -411,6 +411,99 @@ unknown hardware and are ballpark only; and beanstalkd, Redis and NATS all
 provide durability, retries and reconnection semantics that Quicx does not. If
 Quicx wins on latency, part of that margin is work it is not doing.
 
+### Normalizing to a full job
+
+A fair unit is one **complete job**, not one command.
+
+| system | messages per completed job |
+|---|---|
+| Quicx | 5 — `SUBMIT`, `OK`, `TASK`, `DONE`(worker), `DONE`(producer) |
+| beanstalkd | 6 — `put`/reply, `reserve`/reply, `delete`/reply |
+| Redis list | 4–6 — `LPUSH`/reply, `BRPOP`/reply, plus an ack mechanism |
+
+Per-job message counts are broadly comparable, so tasks/sec against jobs/sec is
+a reasonable comparison — but tasks/sec against `LPUSH`/sec is not.
+
+Rough normalization: Redis at ~161k commands/sec needs roughly three command
+round trips per job, giving on the order of **50k jobs/sec** equivalent against
+Quicx's measured **75k**. Different hardware, so treat this as an order-of-
+magnitude sanity check, not a result. The honest version of this claim requires
+running both on this machine.
+
+### Feature and semantics comparison
+
+This is where Quicx is behind, and the gaps are real.
+
+| | **Quicx** | **beanstalkd** | **Redis** (list / Streams) | **RabbitMQ** | **NATS** |
+|---|---|---|---|---|---|
+| delivery guarantee | at-most-once | at-least-once | at-most-once / at-least-once | at-least-once | at-most-once / JetStream at-least-once |
+| task lost if worker crashes mid-task | **yes, silently** | no — TTR re-queues it | list: yes · Streams: no | no — unacked redelivered | core: yes · JetStream: no |
+| producer notified on loss | **no — waits forever** | n/a, job is retried | varies | yes | varies |
+| retry / redelivery | **none** (`retries_left` is set but never read) | TTR + `release` + `bury` | Streams: pending-entries list | yes + dead-letter | JetStream |
+| persistence | none | optional binlog | RDB / AOF | durable + quorum queues | JetStream |
+| priorities | no | yes | no | yes | no |
+| delayed / scheduled jobs | no | yes | no | plugin | no |
+| named queues / topics | no — one global queue | yes (tubes) | yes | yes (exchanges) | yes (subjects) |
+| max payload | **1 KB** | 64 KB (configurable) | 512 MB | configurable | 1 MB default |
+| memory bound | **exact, configured, introspectable** | none | `maxmemory` + eviction | none | none |
+| backpressure | `ERR_QUEUE_FULL` (**desync bug, §7.2**) | yes | eviction | flow control | slow-consumer drop |
+
+### Operational comparison
+
+| | **Quicx** | **beanstalkd** | **Redis** | **RabbitMQ** |
+|---|---|---|---|---|
+| language | C | C | C | Erlang |
+| size | **~2,480 LOC** | ~10k LOC | ~150k LOC | very large |
+| dependencies | **none** | libevent | none | Erlang/OTP |
+| threads | 1 (threading in progress) | 1 | 1 + optional I/O threads | many |
+| client libraries | **none** | many | very many | very many |
+| production maturity | **v1.0.3, pre-production** | 15+ years | 15+ years | 18+ years |
+| observability | `quicx status` (rich) | `stats` | `INFO` + ecosystem | management UI |
+
+### Where Quicx is better
+
+1. **End-to-end latency.** 51 µs p50 for a complete job lifecycle is genuinely
+   fast. This is the strongest measured claim in the document.
+2. **Deterministic memory.** No other system here will state its exact budget
+   up front and report precise per-size-class usage at runtime. Redis's
+   `maxmemory` is a cap with eviction, not a plan.
+3. **Per-thread efficiency.** ~300k messages/sec on one core, ahead of
+   RabbitMQ's reported ~40k msg/s peak with a whole runtime behind it.
+4. **Size and auditability.** 2,480 lines, zero dependencies. The entire
+   dispatch path fits on one screen. Nothing else in the table is readable in
+   an afternoon.
+
+### Where Quicx is worse
+
+1. **Silent task loss.** If a worker dies mid-task the task is gone and the
+   producer blocks forever with no `DONE` and no `FAILED`. beanstalkd's TTR
+   solves exactly this, and it is the single largest functional gap — arguably
+   more serious than lacking persistence, because it fails *quietly*.
+2. **Retry scaffolding is inert.** `retries_left`, `TASK_FAILED` and
+   `TASK_DEAD` exist in the structs and are never read. The design intent is
+   there; the implementation is not.
+3. **No persistence.** A daemon restart loses everything queued.
+4. **1 KB payload cap** — the smallest in the table by a wide margin.
+5. **Backpressure path is broken** (§7.2). The one place the memory-bound
+   design should shine currently corrupts the connection instead.
+6. **No priorities, delays, or named queues.** One global FIFO.
+7. **Single-threaded**, while Redis has optional I/O threads and RabbitMQ,
+   NATS and Kafka are all multi-core.
+8. **No client libraries.** Every user writes a protocol implementation.
+9. **Not battle-tested.** Three bugs surfaced in the first hour of load.
+
+### Honest summary
+
+Quicx is **fast and lean but not yet reliable**. It competes on latency and
+memory determinism, and loses on delivery guarantees, features and maturity.
+Part of the latency advantage is work it is not doing — no persistence, no
+redelivery, no ack bookkeeping — and any published comparison must say so.
+
+The nearest thing to a niche where it genuinely wins today: **low-latency,
+in-memory, fire-and-forget task distribution under a hard memory budget**,
+where losing a task on worker crash is acceptable. Fixing item 1 would widen
+that considerably, and is a much smaller job than adding persistence.
+
 ### Where Quicx has no real competitor
 
 None of the above will tell you "I will use exactly 8 MB, and here is the
