@@ -21,9 +21,14 @@ int protocol_read_exact(int fd, void* buf, int n) {
 /*
 Helper for the send functions. Uses iovec in order to
 write everything in the fd without composing a final buffer.
-Max iovec is sent to 3 because this is the max it is used.
+Callers pass at most 3 parts and the header takes a slot of its
+own, so the local array holds 4.
 */
+#define SEND_FRAME_MAX_PARTS 3
+
 static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int part_count) {
+    if (part_count < 0 || part_count > SEND_FRAME_MAX_PARTS) return -1;
+
     uint32_t total = 0;
     for (int i = 0; i < part_count; i++)
         total += (uint32_t)parts[i].iov_len;
@@ -33,7 +38,7 @@ static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int
     hdr.type    = (uint8_t)type;
     hdr.length  = htonl(total);
 
-    struct iovec iov[3];
+    struct iovec iov[1 + SEND_FRAME_MAX_PARTS];
     iov[0].iov_base = &hdr;
     iov[0].iov_len  = PROTOCOL_HEADER_SIZE;
     for (int i = 0; i < part_count; i++)
