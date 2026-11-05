@@ -15,7 +15,10 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
         case MSG_SUBMIT: {
             Task* t = (Task*)pmad_alloc(&quicx->pmad, sizeof(Task));
             if (!t) {
-                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "queue full pmad failed");
+                /* the payload was already allocated — give it back, not leak it */
+                if (msg->as.submit.payload)
+                    pmad_free(&quicx->pmad, msg->as.submit.payload);
+                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "queue full");
                 return;
             }
 

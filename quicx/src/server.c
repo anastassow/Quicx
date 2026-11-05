@@ -85,6 +85,11 @@ static void handle_new_connection(int loop_fd, int server_fd, Quicx* quicx) {
         return;
     }
 
+    /*
+    the block may have held a payload before, so set every field: a stale
+    worker pointer here would be followed by a DONE sent without READY
+    */
+    memset(conn, 0, sizeof(*conn));
     conn->fd     = fd;
     conn->type   = CONN_UNKNOWN;
 
@@ -158,6 +163,16 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         if (real_len > 0) {
             payload_buf = (uint8_t*)pmad_alloc(&quicx->pmad, real_len);
             if (!payload_buf) {
+                /*
+                the payload bytes are still on the socket. read them off
+                and drop them, or the next read would take payload bytes
+                for a header and the connection would fall out of sync
+                */
+                uint8_t sink[PROTOCOL_MAX_PAYLOAD];
+                if (protocol_read_exact(conn->fd, sink, (int)real_len) <= 0) {
+                    conn_close(loop_fd, conn, quicx);
+                    return;
+                }
                 protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
                 return;
             }
@@ -236,6 +251,7 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
     Connection* conn = (Connection*)pmad_alloc(&quicx->pmad, sizeof(Connection));
     if (!conn) { close(fd); return; }
 
+    memset(conn, 0, sizeof(*conn));
     conn->fd     = fd;
     conn->type   = CONN_CLI;
 

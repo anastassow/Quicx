@@ -5,7 +5,7 @@ REPO="Quicx-Engine/Quicx-Releases"
 INSTALL_DIR="/usr/local/bin"
 
 # bump on every release — what "latest" resolves to
-LATEST_VERSION="v1.0.3"
+LATEST_VERSION="v1.0.4"
 
 VERSION="${QUICX_VERSION:-latest}"
 
