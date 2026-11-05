@@ -19,11 +19,19 @@ int protocol_read_exact(int fd, void* buf, int n) {
 }
 
 /*
+most body parts any sender passes — submit and task send 3
+(prefix/meta, type, payload). the header takes one more iovec slot.
+*/
+#define SEND_MAX_PARTS 3
+
+/*
 Helper for the send functions. Uses iovec in order to
 write everything in the fd without composing a final buffer.
-Max iovec is sent to 3 because this is the max it is used.
+The iovec array holds the header plus up to SEND_MAX_PARTS parts.
 */
 static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int part_count) {
+    if (part_count < 0 || part_count > SEND_MAX_PARTS) return -1;
+
     uint32_t total = 0;
     for (int i = 0; i < part_count; i++)
         total += (uint32_t)parts[i].iov_len;
@@ -33,7 +41,7 @@ static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int
     hdr.type    = (uint8_t)type;
     hdr.length  = htonl(total);
 
-    struct iovec iov[3];
+    struct iovec iov[1 + SEND_MAX_PARTS];
     iov[0].iov_base = &hdr;
     iov[0].iov_len  = PROTOCOL_HEADER_SIZE;
     for (int i = 0; i < part_count; i++)
