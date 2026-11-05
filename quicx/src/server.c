@@ -2,7 +2,7 @@
 #include "event_loop.h"
 #include "protocol.h"
 #include "daemon.h"
-#include "incPMAD.h"
+#include "apool.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -60,7 +60,7 @@ static void conn_close(int loop_fd, Connection* conn, Quicx* quicx) {
 
     printf("connection closed fd=%d\n", conn->fd);
 
-    pmad_free(&quicx->pmad, conn);
+    apool_free(&quicx->ctrl, conn);
 }
 
 /* 
@@ -78,7 +78,7 @@ static void handle_new_connection(int loop_fd, int server_fd, Quicx* quicx) {
         return;
     }
 
-    Connection* conn = (Connection*)pmad_alloc(&quicx->pmad, sizeof(Connection));
+    Connection* conn = (Connection*)apool_alloc(&quicx->ctrl, sizeof(Connection));
     if (!conn) {
         fprintf(stderr, "out of memory for connection\n");
         close(fd);
@@ -156,13 +156,23 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         uint32_t real_len    = payload_len - len_prefix_size - type_len_byte;
         uint8_t* payload_buf = NULL;
         if (real_len > 0) {
-            payload_buf = (uint8_t*)pmad_alloc(&quicx->pmad, real_len);
+            payload_buf = (uint8_t*)apool_alloc(&quicx->mem, real_len);
             if (!payload_buf) {
+                /*
+                the payload bytes are still on the socket. read them off
+                and drop them, or the next read would take payload bytes
+                for a header and the connection would fall out of sync
+                */
+                uint8_t sink[PROTOCOL_MAX_PAYLOAD];
+                if (protocol_read_exact(conn->fd, sink, (int)real_len) <= 0) {
+                    conn_close(loop_fd, conn, quicx);
+                    return;
+                }
                 protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
                 return;
             }
             if (protocol_read_exact(conn->fd, payload_buf, (int)real_len) <= 0) {
-                pmad_free(&quicx->pmad, payload_buf);
+                apool_free(&quicx->mem, payload_buf);
                 conn_close(loop_fd, conn, quicx);
                 return;
             }
@@ -233,7 +243,7 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
     int fd = accept(unix_fd, NULL, NULL);
     if (fd < 0) { perror("accept unix"); return; }
 
-    Connection* conn = (Connection*)pmad_alloc(&quicx->pmad, sizeof(Connection));
+    Connection* conn = (Connection*)apool_alloc(&quicx->ctrl, sizeof(Connection));
     if (!conn) { close(fd); return; }
 
     conn->fd     = fd;

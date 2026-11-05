@@ -18,7 +18,7 @@
 #include "workers.h"
 #include "stats.h"
 #include "server.h"
-#include "incPMAD.h"
+#include "apool.h"
 
 int cli_connect(void) {
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -174,29 +174,36 @@ void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
     printf("            total      %10s   · %u registered since start\n\n",
            nbuf, registered);
 
-    /* memory — pad the byte pair so the bar lands in the shared column */
-    char pair[48];
-    fmt_bytes(b1, sizeof(b1), used);
-    fmt_bytes(b2, sizeof(b2), pool_size);
-    snprintf(pair, sizeof(pair), "%s / %s", b1, b2);
-    printf("  memory    %-21s   ", pair);
-    print_bar(used, pool_size);
-    printf("   %5.1f%%\n", pct_of(used, pool_size));
+    /*
+    memory — the pool is a fixed set of pages; "used" is the pages that are
+    given to some block size right now, the rest are free for any size
+    */
+    uint64_t total_pages = usable / APOOL_PAGE_SIZE;
+    uint64_t owned_pages = used / APOOL_PAGE_SIZE;
 
-    fmt_bytes(b1, sizeof(b1), usable);
-    printf("            usable %s · %d size class%s\n\n",
-           b1, n, n == 1 ? "" : "es");
+    char pair[48];
+    fmt_count(b1, sizeof(b1), owned_pages);
+    fmt_count(b2, sizeof(b2), total_pages);
+    snprintf(pair, sizeof(pair), "%s / %s pages", b1, b2);
+    printf("  memory    %-21s   ", pair);
+    print_bar(owned_pages, total_pages);
+    printf("   %5.1f%%\n", pct_of(owned_pages, total_pages));
+
+    fmt_bytes(b1, sizeof(b1), pool_size);
+    printf("            pool %s, %u KiB pages · %d size%s in use\n\n",
+           b1, (unsigned)(APOOL_PAGE_SIZE / 1024), n, n == 1 ? "" : "s");
 
     for (int i = 0; i < n; i++) {
         uint32_t bs  = ntohl(classes[i].block_size);
         uint32_t tot = ntohl(classes[i].total_blocks);
         uint32_t use = ntohl(classes[i].allocated_blocks);
+        uint32_t pages = tot / (uint32_t)(APOOL_PAGE_SIZE / bs);
 
         fmt_count(b1, sizeof(b1), use);
         fmt_count(b2, sizeof(b2), tot);
         printf("         %5uB  %7s / %7s  ", bs, b1, b2);
         print_bar(use, tot);
-        printf("   %5.1f%%\n", pct_of(use, tot));
+        printf("   %5.1f%%  %4u page%s\n", pct_of(use, tot), pages, pages == 1 ? "" : "s");
     }
 
     printf("\n");
@@ -223,13 +230,19 @@ int cmd_start(int argc, char* argv[]) {
 
     printf("quicx v%s starting\n", VERSION);
     printf("  port:    %d\n", c.port);
-    printf("  classes:");
-    for (int i = 0; i < c.class_count; i++)
-        printf(" %zu", c.sizes[i]);
-    printf("\n");
+    printf("  pool:    %zu bytes, %u KiB pages given to block sizes on demand\n",
+           c.pool_size, (unsigned)(APOOL_PAGE_SIZE / 1024));
+    if (config_provided && c.class_count > 0)
+        printf("  note:    'class' lines in the config are ignored — the pool sizes itself\n");
 
     static Quicx quicx;
-    quicx_init(&quicx, &c);
+    ApoolStatus st = quicx_init(&quicx, &c);
+    if (st != APOOL_OK) {
+        fprintf(stderr, "error: cannot set up a %zu byte pool (status %d)\n", c.pool_size, (int)st);
+        return 1;
+    }
+    printf("  pages:   %u for tasks, %u kept for connections and workers\n",
+           quicx.mem.num_pages, quicx.ctrl.num_pages);
 
     FILE* pf = fopen(PID_FILE, "w");
     if (pf) {
@@ -272,10 +285,10 @@ int cmd_status(void) {
     protocol_send_stats_request(fd);
 
     StatsHeader hdr;
-    StatsClass  classes[MAX_PMAD_CLASSES];
+    StatsClass  classes[APOOL_NUM_CLASSES];
     int n = 0;
 
-    int r = cli_read_stats(fd, &hdr, classes, MAX_PMAD_CLASSES, &n);
+    int r = cli_read_stats(fd, &hdr, classes, APOOL_NUM_CLASSES, &n);
     close(fd);
 
     if (r == CLI_STATS_VERSION_MISMATCH) {

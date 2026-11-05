@@ -2,7 +2,7 @@
 #define QUEUE_H
 
 #include <stdint.h>
-#include "incPMAD.h"
+#include <stdint.h>
 
 #define MAX_TASK_TYPE_SIZE 32
 

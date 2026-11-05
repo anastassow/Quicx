@@ -26,14 +26,15 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/stats.c \
              quicx/src/cli.c \
              quicx/src/config.c \
-             quicx/src/quicx.c
+             quicx/src/quicx.c \
+             quicx/src/apool.c
 
 all: quicxd test_queue test_workers test_dispatcher \
-     test_protocol test_wire test_server
+     test_protocol test_wire test_apool test_server
 
 quicxd:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
-	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/main.c $(QUICX_CORE) \
 	-o $@ -lpthread
 
 test_daemon:
@@ -60,6 +61,11 @@ test_protocol:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
 	quicx/src/tests/test_protocol.c quicx/src/protocol.c \
 	-o $@ -lpthread
+
+test_apool:
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
+	quicx/src/tests/test_apool.c quicx/src/apool.c \
+	-o $@
 
 test_wire:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
@@ -92,6 +98,8 @@ test: all
 	./test_protocol
 	@echo "--- running test_wire ---"
 	./test_wire
+	@echo "--- running test_apool ---"
+	./test_apool
 	@echo "--- running test_server ---"
 	./test_server
 	@echo "--- all tests passed ---"
@@ -106,25 +114,25 @@ release_dir:
 
 linux_x86:
 	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
-	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/main.c $(QUICX_CORE) \
 	-target x86_64-linux-gnu \
 	-o $(OUT_DIR)/quicx-linux-x86_64 -lpthread
 
 linux_arm:
 	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
-	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/main.c $(QUICX_CORE) \
 	-target aarch64-linux-gnu \
 	-o $(OUT_DIR)/quicx-linux-aarch64 -lpthread
 
 mac_x86:
 	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
-	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/main.c $(QUICX_CORE) \
 	-target x86_64-macos-none \
 	-o $(OUT_DIR)/quicx-darwin-x86_64 -lpthread
 
 mac_arm:
 	zig cc $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
-	quicx/src/main.c $(QUICX_CORE) $(PMAD_SRC) \
+	quicx/src/main.c $(QUICX_CORE) \
 	-target aarch64-macos-none \
 	-o $(OUT_DIR)/quicx-darwin-arm64 -lpthread
 
@@ -133,7 +141,7 @@ release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 
 clean:
 	rm -f quicxd test_queue test_workers test_dispatcher \
-	      test_protocol test_wire test_server test_daemon test_stats test_unix
+	      test_protocol test_wire test_apool test_server test_daemon test_stats test_unix
 	rm -rf $(RELEASE_DIR)
 
 dsym_remove:

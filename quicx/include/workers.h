@@ -2,10 +2,10 @@
 #define WORKERS_H
 
 #include <stdint.h>
-#include "incPMAD.h"
+#include "apool.h"
 
 /*
-    The worker struct is allocated via PMAD and the size 
+    The worker struct is allocated from the adaptive pool and the size 
     of one worker is as stated in the static assert.
 */
 
@@ -39,7 +39,7 @@ typedef struct {
 void    workers_init(WorkerPool* pool);
 
 /* Function to add a worker */
-Worker* worker_add(WorkerPool* pool, PMAD* pmad, int fd);
+Worker* worker_add(WorkerPool* pool, Apool* mem, int fd);
 
 /* Function to het a idle worker */
 Worker* worker_get_idle(WorkerPool* pool);
@@ -51,7 +51,7 @@ void    worker_set_idle(WorkerPool* pool, Worker* w);
 void    worker_set_busy(WorkerPool* pool, Worker* w);
 
 /* Function to remoove a worker */
-void    worker_remove(WorkerPool* peel, PMAD* pmad, Worker* w);
+void    worker_remove(WorkerPool* pool, Apool* mem, Worker* w);
 
 /* Function to return a worker to idle */
 void    worker_return_idle(WorkerPool* pool, Worker* w);
