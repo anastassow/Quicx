@@ -106,10 +106,87 @@ def results(pal):
     return c
 
 
+# Quicx 2.0.0 on its own, docs/report/results/{mac,server} (medians of 5 runs; memory of 3)
+LATENCY_US = {  # submit -> done, open loop: 40k/s on the Mac, 9k/s on the i3
+    "p50": (49, 123), "p90": (64, 157), "p99": (98, 198), "p99.9": (143, 208)}
+CAPACITY_V2 = [("40 B", 73146), ("100 B", 46593), ("nginx, 188 B", 30947), ("300 B", 22044), ("900 B", 8016)]
+MEMORY_V2_KB = [("idle", 1056, 1796), ("queue full", 9088, 9816), ("drained", 2080, 2736)]
+
+
+def v2(pal):
+    W, H = 1600, 860
+    c = Canvas(pal, W, H)
+    c.text(60, 70, "Quicx 2.0.0, measured", size=30, weight=700, color="text")
+    c.text(60, 104, "Apple M4 Pro (macOS) and Intel Core i3-2100 (Linux) · default 8 MiB budget · "
+                    "C clients over loopback · medians of repeated runs", size=18, color="body")
+    # headline figures
+    tiles = [("81,900", "tasks / s", "end to end, one thread, M4 Pro"),
+             ("49 µs", "p50", "submit → done at 40k/s, M4 Pro"),
+             ("46,593", "tasks", "of 100 B in the 8 MiB budget"),
+             ("2,080 KB", "held", "after a burst drains, M4 Pro")]
+    for i, (big, unit, note) in enumerate(tiles):
+        x = 60 + i * 375
+        c.rect(x, 130, 355, 116, fill="panel", stroke="line", rx=10, name=f"t{i}")
+        B = c.boxes[f"t{i}"]
+        w = c.text(x + 24, 190, big, size=40, weight=700, color="text", within=B)
+        c.text(x + 34 + w, 190, unit, size=17, mono=True, color="accent_text", within=B)
+        c.text(x + 24, 224, note, size=15, color="muted", within=B)
+
+    def panel(x, w, title, sub, key):
+        c.rect(x, 276, w, 520, fill="panel", stroke="line", rx=10, name=key)
+        c.text(x + 24, 316, title, size=20, weight=600, color="text")
+        c.text(x + 24, 342, sub, size=14.5, color="muted")
+
+    def legend(x, y):
+        for j, (name, col) in enumerate((("M4 Pro", "accent"), ("i3-2100", "block2"))):
+            c.rect(x + j * 120, y - 12, 14, 14, fill=col, stroke=None, rx=3)
+            c.text(x + j * 120 + 22, y, name, size=14, color="body")
+
+    # latency
+    panel(60, 480, "Latency, submit → done", "µs · open loop at 40k/s (M4 Pro) and 9k/s (i3)", "pl")
+    legend(84, 380)
+    x0, scale, y = 160, 300 / 220, 412
+    for name, (mac, lin) in LATENCY_US.items():
+        c.text(84, y + 30, name, size=16, mono=True, color="body")
+        for k, (val, col) in enumerate(((mac, "accent"), (lin, "block2"))):
+            yy = y + k * 30
+            bar(c, x0, yy, val * scale, 24, col)
+            c.text(x0 + val * scale + 10, yy + 18, str(val), size=15, weight=600, color="text")
+        y += 92
+
+    # capacity
+    panel(560, 480, "Tasks that fit in 8 MiB", "accepted before ERROR 0x01 · same on both machines", "pc")
+    x0, scale, y = 720, 230 / 75000, 392
+    for name, n in CAPACITY_V2:
+        c.text(584, y + 21, name, size=15.5, mono=True, color="body")
+        bar(c, x0, y, max(3, n * scale), 30, "accent")
+        c.text(x0 + n * scale + 10, y + 22, f"{n:,}", size=16, weight=600, color="text")
+        y += 76
+
+    # memory over a burst
+    panel(1060, 480, "Memory over one burst", "KB of physical memory of the whole daemon process", "pm")
+    legend(1084, 380)
+    x0, scale, y = 1200, 250 / 10000, 412
+    for name, mac, lin in MEMORY_V2_KB:
+        c.text(1084, y + 30, name, size=15.5, mono=True, color="body")
+        for k, (val, col) in enumerate(((mac, "accent"), (lin, "block2"))):
+            yy = y + k * 30
+            bar(c, x0, yy, val * scale, 24, col)
+            c.text(x0 + val * scale + 10, yy + 18, f"{val:,}", size=15, weight=600, color="text")
+        y += 120
+
+    c.text(60, 836, "Source: docs/report/results. Throughput and latency: median of 5 runs; capacity and memory: "
+                    "median of 3. macOS memory is phys_footprint, Linux resident set size.", size=14, color="dim")
+    return c
+
+
 def main():
     bad = 0
     for name, fn, title, desc in (
             ("banner", banner, "Quicx", "Quicx, the task queue with a hard memory limit"),
+            ("benchmarks", v2, "Quicx 2.0.0 benchmarks",
+             "Quicx 2.0.0: 81,900 tasks per second at 49 µs median latency on an Apple M4 Pro, 46,593 tasks "
+             "of 100 B in 8 MiB, and about 2 MB of memory held after a burst, on macOS and Linux"),
             ("results", results, "Quicx v1.0.4 vs v2.0.0",
              "v2.0.0 fits 46,593 tasks of 100 B in 8 MiB where v1.0.4 fits 655, and holds about 2 MB "
              "instead of 9 MB after a burst, on macOS and Linux")):
