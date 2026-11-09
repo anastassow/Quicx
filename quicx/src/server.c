@@ -154,32 +154,37 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         }
         task_type[type_len_byte] = '\0';
 
-        uint32_t real_len    = payload_len - len_prefix_size - type_len_byte;
-        uint8_t* payload_buf = NULL;
-        if (real_len > 0) {
-            payload_buf = (uint8_t*)apool_alloc(&quicx->mem, real_len);
-            if (!payload_buf) {
-                /*
-                the payload bytes are still on the socket. read them off
-                and drop them, or the next read would take payload bytes
-                for a header and the connection would fall out of sync
-                */
-                uint8_t sink[PROTOCOL_MAX_PAYLOAD];
-                if (protocol_read_exact(conn->fd, sink, (int)real_len) <= 0) {
-                    conn_close(loop_fd, conn, quicx);
-                    return;
-                }
-                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
-                return;
-            }
-            if (protocol_read_exact(conn->fd, payload_buf, (int)real_len) <= 0) {
-                apool_free(&quicx->mem, payload_buf);
+        uint32_t real_len = payload_len - len_prefix_size - type_len_byte;
+
+        /*
+        one block per task: the Task record with the payload right behind
+        it. one allocation, one free, and a single point of refusal
+        */
+        Task* task = (Task*)apool_alloc(&quicx->mem, sizeof(Task) + real_len);
+        if (!task) {
+            /*
+            the payload bytes are still on the socket. read them off and
+            drop them, or the next read would take payload bytes for a
+            header and the connection would fall out of sync
+            */
+            uint8_t sink[PROTOCOL_MAX_PAYLOAD];
+            if (real_len > 0 && protocol_read_exact(conn->fd, sink, (int)real_len) <= 0) {
                 conn_close(loop_fd, conn, quicx);
                 return;
             }
+            protocol_send_error(conn->fd, ERR_QUEUE_FULL, "out of memory");
+            return;
+        }
+
+        uint8_t* payload_buf = real_len > 0 ? (uint8_t*)(task + 1) : NULL;
+        if (real_len > 0 && protocol_read_exact(conn->fd, payload_buf, (int)real_len) <= 0) {
+            apool_free(&quicx->mem, task);
+            conn_close(loop_fd, conn, quicx);
+            return;
         }
 
         memcpy(msg.as.submit.task_type, task_type, type_len_byte + 1);
+        msg.as.submit.block       = task;
         msg.as.submit.payload     = payload_buf;
         msg.as.submit.payload_len = real_len;
 

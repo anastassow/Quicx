@@ -58,7 +58,8 @@ _Static_assert(sizeof(ProtocolHeader) == 6, "Header must be exactly 6 bytes");
 /* Structure for submit messages's body */
 typedef struct {
     char     task_type[PROTOCOL_MAX_TYPE_LEN];  /* user defined what that task is for */
-    uint8_t* payload;                           /* read buffer for the payload from the task*/
+    void*    block;                             /* the task's block: Task record, payload right behind it */
+    uint8_t* payload;                           /* points into block, NULL when there is no payload */
     uint32_t payload_len;                       /* the length of the payload */
 } SubmitBody;
 

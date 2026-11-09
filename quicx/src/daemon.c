@@ -13,15 +13,8 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
     switch (msg->type) {
 
         case MSG_SUBMIT: {
-            Task* t = (Task*)apool_alloc(&quicx->mem, sizeof(Task));
-            if (!t) {
-                /* the payload was already allocated — give it back, or it
-                   leaks and keeps its whole page from ever being reused */
-                if (msg->as.submit.payload)
-                    apool_free(&quicx->mem, msg->as.submit.payload);
-                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "queue full");
-                return;
-            }
+            /* the server already allocated the task's block, payload inside */
+            Task* t = (Task*)msg->as.submit.block;
 
             t->id               = queue_next_id(&quicx->queue);
             t->status           = TASK_WAITING;

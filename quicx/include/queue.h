@@ -15,7 +15,7 @@ typedef enum {
 
 /* Structure foe tasks that will go into the queue. */
 typedef struct Task {
-    void*           payload;        /* read only buffer for the payload */
+    void*           payload;        /* the payload, stored right behind this record in the same block */
     struct Task*    next;           /* next task in the queue */
     uint32_t        id;             /* id of the current task in the queue */
     uint8_t         status;         /* status of the task from the enum */

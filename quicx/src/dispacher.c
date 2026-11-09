@@ -21,8 +21,7 @@ void try_dispach(Quicx* quicx) {
 
         protocol_send_task(w->fd, t->id, t->type, t->payload, t->payload_len);
 
-        if (t->payload) apool_free(&quicx->mem, t->payload);
-        apool_free(&quicx->mem, t);
+        apool_free(&quicx->mem, t);   /* the payload lives in the same block */
     }
 
 }
