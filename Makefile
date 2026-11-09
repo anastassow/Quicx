@@ -68,6 +68,18 @@ test_apool:
 	quicx/src/tests/test_apool.c quicx/src/apool.c \
 	-o $@
 
+# allocator benchmarks (release flags): the ablation of every apool feature
+# against PMAD, and purge's memory and time cost
+bench_apool:
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	quicx/src/tests/bench_apool.c quicx/src/tests/pmad_layout.c quicx/src/apool.c $(PMAD_SRC) \
+	-o $@
+
+bench_purge:
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_RELEASE) \
+	quicx/src/tests/bench_purge.c quicx/src/apool.c \
+	-o $@
+
 test_config:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
 	quicx/src/tests/test_config.c quicx/src/config.c quicx/src/pool_config.c quicx/src/apool.c \
@@ -147,7 +159,8 @@ release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 
 clean:
 	rm -f quicxd test_queue test_workers test_dispatcher \
-	      test_protocol test_wire test_apool test_config test_server test_daemon test_stats test_unix
+	      test_protocol test_wire test_apool test_config test_server test_daemon test_stats test_unix \
+	      bench_apool bench_purge
 	rm -rf $(RELEASE_DIR)
 
 dsym_remove:
