@@ -38,7 +38,11 @@ all: quicxd test_apool test_config test_wire
 
 bench: bench_apool bench_purge
 
-.PHONY: all bench test e2e legacy_tests release clean dsym_remove
+# the targets list no header or source dependencies, so they are phony:
+# every `make` rebuilds them and a source change can never leave a stale binary
+.PHONY: all bench test e2e legacy_tests release clean dsym_remove \
+        quicxd test_apool test_config test_wire bench_apool bench_purge \
+        test_queue test_workers test_dispatcher test_protocol test_server test_daemon test_stats test_unix
 
 quicxd:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
