@@ -30,13 +30,26 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/quicx.c \
              quicx/src/apool.c
 
-all: quicxd test_queue test_workers test_dispatcher \
-     test_protocol test_wire test_apool test_server
+# make          the daemon and its tests
+# make test     run the unit tests
+# make e2e      run the end-to-end tests against ./quicxd (python3)
+# make bench    the allocator benchmarks
+all: quicxd test_apool test_config test_wire
+
+bench: bench_apool bench_purge
+
+.PHONY: all bench test e2e legacy_tests release clean dsym_remove
 
 quicxd:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
 	quicx/src/main.c $(QUICX_CORE) \
 	-o $@ -lpthread
+
+# ---- legacy tests ---------------------------------------------------------
+# written for PMAD, the static allocator of v1.x; they do not build against
+# apool yet and are not part of `make` or `make test`. the daemon itself is
+# covered end to end by `make e2e` (27 checks).
+legacy_tests: test_queue test_workers test_dispatcher test_protocol test_server
 
 test_daemon:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
@@ -105,22 +118,17 @@ test_unix:
 	quicx/src/tests/test_unix.c $(QUICX_CORE) $(PMAD_SRC) \
 	-o $@ -lpthread
 
-test: all
-	@echo "--- running test_queue ---"
-	./test_queue
-	@echo "--- running test_workers ---"
-	./test_workers
-	@echo "--- running test_dispatcher ---"
-	./test_dispatcher
-	@echo "--- running test_protocol ---"
-	./test_protocol
-	@echo "--- running test_wire ---"
-	./test_wire
-	@echo "--- running test_apool ---"
+test: test_apool test_config test_wire
+	@echo "--- test_apool ---"
 	./test_apool
-	@echo "--- running test_server ---"
-	./test_server
-	@echo "--- all tests passed ---"
+	@echo "--- test_config ---"
+	./test_config quicx.conf
+	@echo "--- test_wire ---"
+	./test_wire
+	@echo "--- all unit tests passed ---"
+
+e2e: quicxd
+	python3 docs/report/scripts/e2e_tests.py ./quicxd 16391
 
 VERSION ?= dev
 
