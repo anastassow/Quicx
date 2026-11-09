@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Quicx is a task queue daemon written in C. Producers send it tasks over TCP, workers take them one at a time, and each producer hears back when its task is done. The daemon is a single process with a single thread, and it never uses more memory than the budget it was started with (8 MiB unless you change it). Once that budget is full, a new task gets an error and the process stays the same size.
+Quicx is a task queue daemon written in C. Producers send it tasks over TCP and workers take them one at a time; when a worker finishes, the producer that sent the task is told. The daemon is a single process with a single thread, and it never uses more memory than the budget it was started with (8 MiB unless you change it). Once that budget is full, a new task gets an error and the process stays the same size.
 
 Version 2.0 replaces the allocator that manages the budget. Up to 1.0.4 it was PMAD, which divided the memory between block sizes by fixed percentages before any task arrived. The new allocator, apool, hands out 16 KiB pages to the sizes that actually show up and takes them back when they empty. In the default 8 MiB there is now room for 46,593 tasks of 100 bytes, where 1.0.4 had room for 655, and the memory a burst used goes back to the operating system once the queue drains.
 
@@ -13,9 +13,9 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 
 ## Why a fixed budget
 
-A queue that grows with its backlog is fine on a machine of its own. Put it next to the application it serves, on a small VM or in a container with a memory limit, and the two end up fighting over the same memory. Quicx works the other way around. You decide up front how much memory the queue may have, and it stays inside that number even if producers outrun the workers for hours.
+A queue that grows with its backlog is fine on a machine of its own. Next to the application it serves, on a small VM or in a container with a memory limit, the two end up fighting over the same memory. With Quicx you decide up front how much memory the queue may have, and it stays inside that number even when producers outrun the workers.
 
-The rest of the design follows from keeping it small. The binary is 55 KB of C17 with no dependencies and runs on macOS (kqueue) and Linux (epoll), on x86-64 and arm64. Clients talk to it with a binary protocol of 12 message types behind a 6-byte header, and there is a Java client. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
+The binary is 55 KB of C17 with no dependencies. It runs on macOS (kqueue) and Linux (epoll), on x86-64 and arm64. Clients talk to it with a binary protocol of 12 message types behind a 6-byte header, and there is a Java client. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
 
 ## How a task moves through the daemon
 
@@ -52,9 +52,9 @@ The source is about 2,800 lines in `quicx/src`:
   <img src="docs/report/figures/apool-architecture-light.png" alt="apool v2: one mapping of 16 KiB pages and 32 B page records; size classes own lists of pages; freed blocks inside a page form an encoded free list; empty pages stay warm, then give their memory back." width="100%">
 </picture>
 
-apool maps the whole budget once: 508 pages of 16 KiB, followed by a 32-byte record for each page. A page in use holds blocks of one size, out of 68 sizes from 16 to 1,088 bytes. Blocks have no header. The allocator finds a block's page by dividing its offset by 16 KiB, and the page's record says the rest: which size it serves, how many blocks are live, where its free list starts and how much of it has been used. Freed blocks are chained through their own first bytes, so allocating and freeing take the same time however full the pool is. When the last block on a page is freed, the page goes back to a shared list, and any size can take it next. That is how the budget follows the traffic.
+apool maps the whole budget once: 508 pages of 16 KiB, followed by a 32-byte record for each page. A page in use holds blocks of one size, out of 68 sizes from 16 to 1,088 bytes. Blocks have no header. The allocator finds a block's page by dividing its offset by 16 KiB, and the page's record says the rest: which size it serves, how many blocks are live, where its free list starts and how much of it has been used. Freed blocks are chained through their own first bytes, so allocating and freeing take the same time however full the pool is. When the last block on a page is freed, the page goes back to a shared list, and whichever size needs a page next takes it.
 
-None of the techniques are new on their own; each one comes from an earlier allocator. I put every one behind its own switch so its effect could be measured separately, and kept the ones that helped:
+Each technique comes from an earlier allocator. I put every one behind its own switch so its effect could be measured separately, and kept the ones that helped:
 
 | Technique | Taken from | Effect | Cost |
 |---|---|---|---|
@@ -261,7 +261,7 @@ Physical memory of the daemon in KB. 1.0.4 wrote a header into every block when 
 | queue full | 9,200 | 9,088 | 9,928 | 9,816 |
 | after the queue drains | 9,200 | 2,080 | 9,928 | 2,736 |
 
-Throughput and latency barely moved, and the differences are within what separate runs of the same version vary by:
+Throughput and latency stayed where they were; the differences are smaller than the spread between runs of the same version:
 
 | | 1.0.4, M4 Pro | 2.0.0, M4 Pro | 1.0.4, i3 | 2.0.0, i3 |
 |---|---:|---:|---:|---:|
@@ -269,7 +269,7 @@ Throughput and latency barely moved, and the differences are within what separat
 | latency p50 | 47 µs | 49 µs | 128 µs | 123 µs |
 | latency p99 | 111 µs | 98 µs | 162 µs | 198 µs |
 
-Taken on its own, PMAD is still the faster allocator (13.3 ns per task on the M4 Pro, against 14.8 ns for apool), but a task's round trip through the daemon takes tens of microseconds, so the difference doesn't show.
+PMAD on its own is still the faster allocator (13.3 ns per task on the M4 Pro, against 14.8 ns for apool). A task's round trip through the daemon takes tens of microseconds, so the difference doesn't show up there.
 
 The end-to-end tests found a bug in 1.0.4. A 16-byte task shares a block size with a connection in PMAD, and a 32-byte task shares one with a worker. If the queue fills up with such tasks before any worker has connected, the next worker can't get memory to register, and the queue stays full until the daemon is restarted. 1.0.4 fails 4 of the 27 end-to-end checks because of this, on both machines. 2.0.0 passes all 27, since connections and workers now have a pool of their own.
 
