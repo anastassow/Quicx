@@ -329,7 +329,7 @@ int cmd_version(void) {
 void print_usage(void) {
     printf("quicx v%s — lightweight task queue daemon\n\n", VERSION);
     printf("usage:\n");
-    printf("  quicx start --config FILE\n");
+    printf("  quicx start [--config FILE] [--port N]\n");
     printf("  quicx stop\n");
     printf("  quicx status\n");
     printf("  quicx version\n");
