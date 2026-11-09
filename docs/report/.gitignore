@@ -1,0 +1,12 @@
+build/
+main.log
+main.blg
+scripts/bench/bench_worker
+scripts/bench/bench_producer
+scripts/bench/bench_report
+scripts/bench/results/
+__pycache__/
+figures/*.outlined.svg
+PROGRESS.md
+SUMMARY.md
+build/

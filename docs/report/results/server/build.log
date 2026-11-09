@@ -1,0 +1,169 @@
+compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+In file included from quicx/src/main.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/daemon.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/cli.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+quicx/src/cli.c: In function 'cmd_stop':
+quicx/src/cli.c:268:5: warning: ignoring return value of 'fscanf' declared with attribute 'warn_unused_result' [-Wunused-result]
+  268 |     fscanf(f, "%d", &pid);
+      |     ^~~~~~~~~~~~~~~~~~~~~
+quicx/src/cli.c: In function 'cli_print_stats':
+quicx/src/cli.c:187:40: warning: '%s' directive output may be truncated writing up to 31 bytes into a region of size between 14 and 45 [-Wformat-truncation=]
+  187 |     snprintf(pair, sizeof(pair), "%s / %s pages", b1, b2);
+      |                                        ^~             ~~
+In file included from /usr/include/stdio.h:980,
+                 from quicx/src/cli.c:3:
+In function 'snprintf',
+    inlined from 'cli_print_stats' at quicx/src/cli.c:187:5:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:54:10: note: '__builtin___snprintf_chk' output between 10 and 72 bytes into a destination of size 48
+   54 |   return __builtin___snprintf_chk (__s, __n, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   55 |                                    __glibc_objsize (__s), __fmt,
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |                                    __va_arg_pack ());
+      |                                    ~~~~~~~~~~~~~~~~~
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/tests/test_wire.c:8:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/main.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/daemon.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/cli.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+quicx/src/cli.c: In function 'cmd_stop':
+quicx/src/cli.c:255:5: warning: ignoring return value of 'fscanf' declared with attribute 'warn_unused_result' [-Wunused-result]
+  255 |     fscanf(f, "%d", &pid);
+      |     ^~~~~~~~~~~~~~~~~~~~~
+quicx/src/cli.c: In function 'cli_print_stats':
+quicx/src/cli.c:181:40: warning: '%s' directive output may be truncated writing up to 31 bytes into a region of size between 14 and 45 [-Wformat-truncation=]
+  181 |     snprintf(pair, sizeof(pair), "%s / %s", b1, b2);
+      |                                        ^~       ~~
+In file included from /usr/include/stdio.h:980,
+                 from quicx/src/cli.c:3:
+In function 'snprintf',
+    inlined from 'cli_print_stats' at quicx/src/cli.c:181:5:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:54:10: note: '__builtin___snprintf_chk' output between 4 and 66 bytes into a destination of size 48
+   54 |   return __builtin___snprintf_chk (__s, __n, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   55 |                                    __glibc_objsize (__s), __fmt,
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |                                    __va_arg_pack ());
+      |                                    ~~~~~~~~~~~~~~~~~
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/main.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/daemon.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from quicx/src/cli.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+quicx/src/cli.c: In function 'cmd_stop':
+quicx/src/cli.c:268:5: warning: ignoring return value of 'fscanf' declared with attribute 'warn_unused_result' [-Wunused-result]
+  268 |     fscanf(f, "%d", &pid);
+      |     ^~~~~~~~~~~~~~~~~~~~~
+quicx/src/cli.c: In function 'cli_print_stats':
+quicx/src/cli.c:187:40: warning: '%s' directive output may be truncated writing up to 31 bytes into a region of size between 14 and 45 [-Wformat-truncation=]
+  187 |     snprintf(pair, sizeof(pair), "%s / %s pages", b1, b2);
+      |                                        ^~             ~~
+In file included from /usr/include/stdio.h:980,
+                 from quicx/src/cli.c:3:
+In function 'snprintf',
+    inlined from 'cli_print_stats' at quicx/src/cli.c:187:5:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:54:10: note: '__builtin___snprintf_chk' output between 10 and 72 bytes into a destination of size 48
+   54 |   return __builtin___snprintf_chk (__s, __n, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   55 |                                    __glibc_objsize (__s), __fmt,
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |                                    __va_arg_pack ());
+      |                                    ~~~~~~~~~~~~~~~~~
+In file included from quicx/src/config.c:1:
+quicx/include/platform.h:13: warning: "_GNU_SOURCE" redefined
+   13 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+built into /home/anastassow/quicx-report/docs/report/build/server:
+bench_apool
+bench_apool_ps16
+bench_apool_ps32
+bench_apool_ps4
+bench_apool_ps64
+bench_apool_ps8
+bench_purge
+fill
+quicxd-1.0.4
+quicxd-v1
+quicxd-v2
+test_apool
+test_wire
+quicx v1.0.3
+quicx v1.0.4

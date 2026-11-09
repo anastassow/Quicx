@@ -1,0 +1,60 @@
+[19:46:22] machine info written
+[19:46:23] test_apool exit 0: passed: 39  failed: 0
+[19:46:23] test_wire exit 0: failed: 0
+[19:46:24] e2e 1.0.4: SUMMARY passed=23 failed=4
+[19:46:35] e2e v1: SUMMARY passed=27 failed=0
+[19:46:45] e2e v2: SUMMARY passed=27 failed=0
+[19:46:48] bench_apool run 1 done
+[19:46:48] bench_purge run 1 done
+[19:46:50] bench_apool run 2 done
+[19:46:51] bench_purge run 2 done
+[19:46:53] bench_apool run 3 done
+[19:46:53] bench_purge run 3 done
+[19:46:56] bench_apool run 4 done
+[19:46:56] bench_purge run 4 done
+[19:46:58] bench_apool run 5 done
+[19:46:58] bench_purge run 5 done
+[19:47:13] page-size sweep run 1 done
+[19:47:26] page-size sweep run 2 done
+[19:47:39] page-size sweep run 3 done
+[19:47:48] capacity 1.0.4 run 1: phase=100 accepted=655 refused_with="out of memory" next_sub
+[19:48:04] capacity v1 run 1: phase=100 accepted=47158 refused_with="out of memory" next_s
+[19:48:19] capacity v2 run 1: phase=100 accepted=46593 refused_with="out of memory" next_s
+[19:48:28] capacity 1.0.4 run 2: phase=100 accepted=655 refused_with="out of memory" next_sub
+[19:48:44] capacity v1 run 2: phase=100 accepted=47158 refused_with="out of memory" next_s
+[19:48:59] capacity v2 run 2: phase=100 accepted=46593 refused_with="out of memory" next_s
+[19:49:08] capacity 1.0.4 run 3: phase=100 accepted=655 refused_with="out of memory" next_sub
+[19:49:24] capacity v1 run 3: phase=100 accepted=47158 refused_with="out of memory" next_s
+[19:49:39] capacity v2 run 3: phase=100 accepted=46593 refused_with="out of memory" next_s
+[19:49:51] closed 1.0.4 run 1: p50=2629.0 p90=3784.0 p99=3886.0 p999=3948.0 max=4785.0 samples=691303 thr=[43.2k 43.2k] err=0 drops=0
+[19:50:03] closed v1 run 1: p50=2901.0 p90=3770.0 p99=3876.0 p999=3932.0 max=4188.0 samples=679056 thr=[42.5k 42.5k] err=0 drops=0
+[19:50:15] closed v2 run 1: p50=2784.0 p90=3796.0 p99=3893.0 p999=3949.0 max=4176.0 samples=682482 thr=[42.7k 42.7k] err=0 drops=0
+[19:50:27] closed 1.0.4 run 2: p50=3016.0 p90=3786.0 p99=3880.0 p999=3936.0 max=4141.0 samples=671645 thr=[42.0k 42.0k] err=0 drops=0
+[19:50:39] closed v1 run 2: p50=2954.0 p90=3789.0 p99=3897.0 p999=3948.0 max=4248.0 samples=675554 thr=[42.2k 42.2k] err=0 drops=0
+[19:50:52] closed v2 run 2: p50=3272.0 p90=3795.0 p99=3910.0 p999=3972.0 max=4168.0 samples=654955 thr=[40.9k 41.0k] err=0 drops=0
+[19:51:04] closed 1.0.4 run 3: p50=3462.0 p90=3759.0 p99=3892.0 p999=4001.0 max=4260.0 samples=634349 thr=[39.7k 39.7k] err=0 drops=0
+[19:51:16] closed v1 run 3: p50=3480.0 p90=3750.0 p99=3971.0 p999=5839.0 max=9375.0 samples=620255 thr=[38.8k 38.8k] err=0 drops=0
+[19:51:28] closed v2 run 3: p50=3439.0 p90=3763.0 p99=4421.0 p999=7020.0 max=16102.0 samples=622116 thr=[38.9k 38.9k] err=0 drops=0
+[19:51:41] closed 1.0.4 run 4: p50=3373.0 p90=3804.0 p99=4268.0 p999=5864.0 max=10725.0 samples=642839 thr=[40.2k 40.2k] err=0 drops=0
+[19:51:53] closed v1 run 4: p50=3481.0 p90=3814.0 p99=4243.0 p999=5761.0 max=6489.0 samples=624236 thr=[39.0k 39.0k] err=0 drops=0
+[19:52:05] closed v2 run 4: p50=2844.0 p90=3807.0 p99=3921.0 p999=6415.0 max=7179.0 samples=679145 thr=[42.5k 42.5k] err=0 drops=0
+[19:52:17] closed 1.0.4 run 5: p50=3234.0 p90=3819.0 p99=3944.0 p999=4932.0 max=5863.0 samples=659112 thr=[41.2k 41.2k] err=0 drops=0
+[19:52:29] closed v1 run 5: p50=3385.0 p90=3810.0 p99=3968.0 p999=4779.0 max=5614.0 samples=645667 thr=[40.4k 40.4k] err=0 drops=0
+[19:52:42] closed v2 run 5: p50=3412.0 p90=3827.0 p99=3937.0 p999=4686.0 max=6017.0 samples=640845 thr=[40.1k 40.1k] err=0 drops=0
+[19:52:43] open-loop rate 40000 tasks/s
+[19:52:54] open 1.0.4 run 1: p50=47.0 p90=65.0 p99=111.0 p999=252.0 max=1623.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:53:06] open v1 run 1: p50=47.0 p90=67.0 p99=139.0 p999=2192.0 max=5504.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:53:18] open v2 run 1: p50=47.0 p90=64.0 p99=126.0 p999=607.0 max=2576.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:53:31] open 1.0.4 run 2: p50=46.0 p90=68.0 p99=155.0 p999=675.0 max=1751.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:53:43] open v1 run 2: p50=47.0 p90=73.0 p99=142.0 p999=431.0 max=1571.0 samples=319999 thr=[20.0k 20.0k] err=0 drops=0
+[19:53:55] open v2 run 2: p50=54.0 p90=113.0 p99=395.0 p999=4470.0 max=5873.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:54:07] open 1.0.4 run 3: p50=45.0 p90=79.0 p99=141.0 p999=278.0 max=962.0 samples=319999 thr=[20.0k 20.0k] err=0 drops=0
+[19:54:19] open v1 run 3: p50=45.0 p90=60.0 p99=101.0 p999=145.0 max=245.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:54:32] open v2 run 3: p50=45.0 p90=60.0 p99=98.0 p999=143.0 max=247.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:54:44] open 1.0.4 run 4: p50=47.0 p90=60.0 p99=89.0 p999=131.0 max=235.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:54:56] open v1 run 4: p50=48.0 p90=63.0 p99=90.0 p999=129.0 max=245.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:55:08] open v2 run 4: p50=50.0 p90=64.0 p99=92.0 p999=133.0 max=249.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:55:20] open 1.0.4 run 5: p50=49.0 p90=63.0 p99=91.0 p999=131.0 max=302.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:55:33] open v1 run 5: p50=47.0 p90=63.0 p99=110.0 p999=163.0 max=357.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:55:45] open v2 run 5: p50=49.0 p90=64.0 p99=93.0 p999=134.0 max=297.0 samples=320000 thr=[20.0k 20.0k] err=0 drops=0
+[19:55:46] all done

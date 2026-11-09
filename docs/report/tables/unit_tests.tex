@@ -1,0 +1,11 @@
+\texttt{test\_apool}: random stress, daemon features & random sizes and order, 1 in 8 blocks long-lived, with the daemon's flags: no overlap, all memory returns, pages reshaped and purged & core, reserve, hardening, purge, lifetimes together & 9/9 pass & 9/9 pass \\
+\texttt{test\_apool}: random stress, all features & the same with every allocator feature on at once & all six allocator features together & 9/9 pass & 9/9 pass \\
+\texttt{test\_apool}: reshape & the same pages serve 64 B, then 1,024 B blocks & pages move between sizes & 4/4 pass & 4/4 pass \\
+\texttt{test\_apool}: reserve & a flood leaves the reserve; a new size still gets one page & reserve & 3/3 pass & 3/3 pass \\
+\texttt{test\_apool}: fullest page first & allocation picks the fuller page & fullest-first & 2/2 pass & 2/2 pass \\
+\texttt{test\_apool}: lifetime classes & short- and long-lived blocks never share a page & lifetime classes & 2/2 pass & 2/2 pass \\
+\texttt{test\_apool}: double free & a second free is refused and counted & hardening & 6/6 pass & 6/6 pass \\
+\texttt{test\_apool}: corrupted free list & an overwritten link is detected and cut & hardening & 4/4 pass & 4/4 pass \\
+\texttt{test\_apool}: purge & pages beyond the warm set are purged and work again & purge & 2/2 pass & 2/2 pass \\
+\texttt{test\_apool}: invalid input & bad sizes and bad pointers are refused & core & 9/9 pass & 9/9 pass \\
+\texttt{test\_wire} & frames with payloads reach the socket intact & protocol fix (v1.0.4) & 28/28 pass & 28/28 pass \\

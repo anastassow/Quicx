@@ -1,0 +1,109 @@
+% Every entry was checked on 2026-11-08 against the publisher's page or at
+% least two independent records. Fields that could not be confirmed (for
+% example the page range of the slab paper) are left out, not guessed.
+
+@inproceedings{bonwick1994slab,
+  author    = {Jeff Bonwick},
+  title     = {The Slab Allocator: An Object-Caching Kernel Memory Allocator},
+  booktitle = {USENIX Summer 1994 Technical Conference},
+  address   = {Boston, MA},
+  year      = {1994},
+  url       = {https://www.usenix.org/legacy/publications/library/proceedings/bos94/bonwick.html}
+}
+
+@inproceedings{berger2000hoard,
+  author    = {Emery D. Berger and Kathryn S. McKinley and Robert D. Blumofe and Paul R. Wilson},
+  title     = {Hoard: A Scalable Memory Allocator for Multithreaded Applications},
+  booktitle = {Proceedings of the Ninth International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS-IX)},
+  pages     = {117--128},
+  year      = {2000},
+  doi       = {10.1145/378993.379232}
+}
+
+@inproceedings{leijen2019mimalloc,
+  author    = {Daan Leijen and Benjamin Zorn and Leonardo de Moura},
+  title     = {Mimalloc: Free List Sharding in Action},
+  booktitle = {Programming Languages and Systems (APLAS 2019)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {11893},
+  publisher = {Springer},
+  year      = {2019},
+  doi       = {10.1007/978-3-030-34175-6_13},
+  note      = {Extended version: Microsoft Research technical report MSR-TR-2019-18}
+}
+
+@inproceedings{evans2006jemalloc,
+  author    = {Jason Evans},
+  title     = {A Scalable Concurrent \texttt{malloc(3)} Implementation for {FreeBSD}},
+  booktitle = {BSDCan},
+  address   = {Ottawa, Canada},
+  year      = {2006},
+  url       = {https://people.freebsd.org/~jasone/jemalloc/bsdcan2006/jemalloc.pdf}
+}
+
+@inproceedings{maas2020llama,
+  author    = {Martin Maas and David G. Andersen and Michael Isard and Mohammad Mahdi Javanmard and Kathryn S. McKinley and Colin Raffel},
+  title     = {Learning-based Memory Allocation for {C++} Server Workloads},
+  booktitle = {Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS '20)},
+  pages     = {541--556},
+  year      = {2020},
+  doi       = {10.1145/3373376.3378525}
+}
+
+@book{gorman2004vmm,
+  author    = {Mel Gorman},
+  title     = {Understanding the {Linux} Virtual Memory Manager},
+  publisher = {Prentice Hall},
+  year      = {2004},
+  isbn      = {0-13-145348-3},
+  note      = {Zone watermarks: chapter 2}
+}
+
+@book{corbet2005ldd3,
+  author    = {Jonathan Corbet and Alessandro Rubini and Greg Kroah-Hartman},
+  title     = {Linux Device Drivers},
+  edition   = {Third},
+  publisher = {O'Reilly},
+  year      = {2005},
+  isbn      = {0-596-00590-3},
+  note      = {Memory pools (\texttt{mempool}): chapter 8}
+}
+
+@misc{memcached1411,
+  author       = {{memcached project}},
+  title        = {Release Notes for v1.4.11: slab\_reassign and slab\_automove},
+  year         = {2012},
+  howpublished = {\url{https://github.com/memcached/memcached/wiki/ReleaseNotes1411}}
+}
+
+@misc{linuxmadvise,
+  author       = {{Linux man-pages project}},
+  title        = {madvise(2) --- give advice about use of memory},
+  howpublished = {\url{https://man7.org/linux/man-pages/man2/madvise.2.html}},
+  year         = {2026},
+  note         = {Accessed 2026-11-08}
+}
+
+@misc{xnumman,
+  author       = {{Apple}},
+  title        = {{XNU} kernel source, \texttt{bsd/sys/mman.h} (\texttt{MADV\_FREE\_REUSABLE}, \texttt{MADV\_FREE\_REUSE})},
+  howpublished = {\url{https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/mman.h}},
+  year         = {2026},
+  note         = {Accessed 2026-11-08}
+}
+
+@misc{pmad,
+  author       = {Dimitar Anastasov},
+  title        = {{PMAD}: a percentage-split memory allocator},
+  year         = {2026},
+  howpublished = {Part of the Quicx source tree, \texttt{pmad/}},
+  note         = {The static allocator used by Quicx up to v1.0.4}
+}
+
+@misc{brownc4,
+  author       = {Simon Brown},
+  title        = {The {C4} model for visualising software architecture: notation, and the software architecture diagram review checklist},
+  howpublished = {\url{https://c4model.com/diagrams/notation} and \url{https://c4model.com/diagrams/checklist}},
+  year         = {2026},
+  note         = {Accessed 2026-11-09}
+}

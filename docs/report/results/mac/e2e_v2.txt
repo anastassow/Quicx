@@ -1,0 +1,29 @@
+daemon /Users/anastassow/Desktop/Quicx-adaptive/docs/report/build/mac/quicxd-v2 port 16391
+RESULT roundtrip/payloads-byte-exact PASS 9/9 sizes 0-1019 B
+RESULT roundtrip/types-intact PASS 9/9
+RESULT roundtrip/done-forwarded-to-producer PASS 9/9
+RESULT oversize/error-0x03 PASS type 3 code 03
+RESULT oversize/connection-closed PASS
+RESULT oversize/daemon-alive PASS
+RESULT refusal-16/error-0x01 PASS accepted 102204, then type 3 'out of memory'
+RESULT refusal-16/connection-in-sync PASS next submit -> type 3, heartbeat -> type 10
+RESULT liveness-16/late-worker-drains-all PASS drained 102204/102204
+RESULT liveness-16/queue-usable-after PASS type 2
+RESULT liveness-16/daemon-alive PASS
+RESULT refusal-32/error-0x01 PASS accepted 85170, then type 3 'out of memory'
+RESULT refusal-32/connection-in-sync PASS next submit -> type 3, heartbeat -> type 10
+RESULT liveness-32/late-worker-drains-all PASS drained 85170/85170
+RESULT liveness-32/queue-usable-after PASS type 2
+RESULT liveness-32/daemon-alive PASS
+RESULT refusal-100/error-0x01 PASS accepted 46593, then type 3 'out of memory'
+RESULT refusal-100/connection-in-sync PASS next submit -> type 3, heartbeat -> type 10
+RESULT liveness-100/late-worker-drains-all PASS drained 46593/46593
+RESULT liveness-100/queue-usable-after PASS type 2
+RESULT liveness-100/daemon-alive PASS
+RESULT refusal-900/error-0x01 PASS accepted 8016, then type 3 'out of memory'
+RESULT refusal-900/connection-in-sync PASS next submit -> type 3, heartbeat -> type 10
+RESULT liveness-900/late-worker-drains-all PASS drained 8016/8016
+RESULT liveness-900/queue-usable-after PASS type 2
+RESULT liveness-900/daemon-alive PASS
+RESULT stale/done-without-ready-no-crash PASS
+SUMMARY passed=27 failed=0

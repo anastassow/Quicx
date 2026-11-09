@@ -1,0 +1,65 @@
+--- random stress, daemon features ---
+  PASS: init
+  PASS: no block overlapped another
+  PASS: every block 16-byte aligned
+  PASS: no unexpected errors
+  PASS: all pages back on the free list
+  PASS: no size holds pages, blocks or list entries
+  PASS: no double free or corruption reported
+  PASS: pages changed size during the run
+  PASS: purge ran during the run
+  flags 0xe · 511 pages · 1245 reshapes · 408 purges
+--- random stress, all features ---
+  PASS: init
+  PASS: no block overlapped another
+  PASS: every block 16-byte aligned
+  PASS: no unexpected errors
+  PASS: all pages back on the free list
+  PASS: no size holds pages, blocks or list entries
+  PASS: no double free or corruption reported
+  PASS: pages changed size during the run
+  PASS: purge ran during the run
+  flags 0xf · 511 pages · 1225 reshapes · 407 purges
+--- reshape: all 64 B, drain, all 1024 B ---
+  PASS: 64 B fills every page exactly
+  PASS: drained back to all free pages
+  PASS: 1024 B then fills every page exactly
+  PASS: every page changed size
+--- reserve ---
+  PASS: flood stops with the reserve still free
+  PASS: a new size still gets exactly one page
+  PASS: that page came out of the reserve
+  48 B: 171864 blocks · 912 B afterwards: 17 blocks
+--- fullest page first ---
+  PASS: two full pages of 64 B
+  PASS: next block comes from the fuller page
+--- lifetime classes ---
+  PASS: short and long blocks are on different pages
+  PASS: all pages returned
+--- double free ---
+  PASS: first free is fine
+  PASS: second free of the same block is caught
+  PASS: it is counted
+  PASS: a live neighbour still frees normally
+  PASS: the free list still works
+  PASS: freeing into a returned page is rejected
+--- corrupted free list ---
+  PASS: the overwritten block is handed out
+  PASS: the broken link is detected
+  PASS: the bad address is never handed out
+  PASS: the page still drains and returns
+--- purge ---
+  PASS: pages beyond the warm set were purged
+  PASS: purged pages are usable again
+--- invalid input ---
+  PASS: size 0 rejected
+  PASS: size 1089 rejected
+  PASS: size 1088 accepted
+  PASS: free NULL
+  PASS: free pointer outside pool
+  PASS: free pointer inside block
+  PASS: free never-used block
+  PASS: free into an unowned page
+  PASS: valid free
+
+passed: 50  failed: 0

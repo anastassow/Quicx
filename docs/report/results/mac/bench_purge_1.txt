@@ -1,0 +1,2 @@
+mode=purge_on measure=phys_footprint blocks=8064 base_kb=928 init_kb=32 full_kb=8160 drained_kb=1104 held_after_drain_kb=1104 burst_purges=441 cycle_ns_per_block=104.9 cycle_purges=17640 churn_ns_per_task=13.8 churn_purges=0
+mode=purge_off measure=phys_footprint blocks=8064 base_kb=1024 init_kb=32 full_kb=8096 drained_kb=8096 held_after_drain_kb=8096 burst_purges=0 cycle_ns_per_block=8.8 cycle_purges=0 churn_ns_per_task=12.4 churn_purges=0

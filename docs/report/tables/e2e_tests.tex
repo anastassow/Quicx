@@ -1,0 +1,8 @@
+roundtrip & payloads of 0–1,019 B arrive byte-exact; DONE reaches the producer & one block per task & pass & pass & pass & pass \\
+oversize & a body over 1,024 B gets ERROR 0x03 and the connection closes & protocol & pass & pass & pass & pass \\
+refusal-100 & a full queue answers ERROR 0x01; the stream stays in sync & drain on refusal & pass & pass & pass & pass \\
+liveness-16 & after the queue fills with 16 B tasks, a new worker connects and drains all & control pool & \textbf{fail} & pass & \textbf{fail} & pass \\
+liveness-32 & the same with 32 B tasks & control pool & \textbf{fail} & pass & \textbf{fail} & pass \\
+liveness-100 & the same with 100 B tasks & control pool & pass & pass & pass & pass \\
+liveness-900 & the same with 900 B tasks & control pool & pass & pass & pass & pass \\
+stale & DONE from a connection that never sent READY does not crash & Connection reset & pass & pass & pass & pass \\

@@ -1,0 +1,41 @@
+=== wire tests ===
+
+--- MSG_TASK on the wire, 13 B payload ---
+  PASS: send returns 0
+  PASS: header version
+  PASS: header type is MSG_TASK
+  PASS: header length = id+len+type+payload
+  PASS: every promised byte is on the wire
+  PASS: task id
+  PASS: type length byte
+  PASS: type bytes
+  PASS: payload bytes
+
+--- MSG_TASK on the wire, 1007 B payload ---
+  PASS: send returns 0
+  PASS: header version
+  PASS: header type is MSG_TASK
+  PASS: header length = id+len+type+payload
+  PASS: every promised byte is on the wire
+  PASS: task id
+  PASS: type length byte
+  PASS: type bytes
+  PASS: payload bytes
+
+--- MSG_SUBMIT on the wire ---
+  PASS: send returns 0
+  PASS: header type is MSG_SUBMIT
+  PASS: header length = len+type+payload
+  PASS: every promised byte is on the wire
+  PASS: type length byte
+  PASS: type bytes
+  PASS: payload bytes
+
+--- two MSG_TASK frames back to back ---
+  PASS: total bytes = both frames
+  PASS: second frame starts aligned
+  PASS: second payload intact
+
+=== results ===
+passed: 28
+failed: 0

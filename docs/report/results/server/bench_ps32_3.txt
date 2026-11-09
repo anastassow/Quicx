@@ -1,0 +1,15 @@
+8 MiB pool · a task is a 64 B record + payload · page 32 KiB
+
+                          100 B |   100 B   900 B    40 B   300 B |  starve  pinned |     FIFO    8 out   random |     ns
+allocator              capacity |              phases on one pool |   900 B   900 B |       deepest queue, mixed |  /task
+PMAD, default config        655 |     655     180    1310     262 |     180     180 |     5312     5152     5312 |   44.5
+apool v1                  47304 |   47304    8330   74338   22528 |       0       0 |    28416    28160    28160 |  102.7
+apool v2                  46872 |   46872    8316   73584   22428 |      33    7887 |    27392    27392    26880 |   72.3
+v2 + fullest first        46872 |   46872    8316   73584   22428 |      33    7887 |    27392    27392    26880 |   81.4
+v2 - reserve              47430 |   47430    8415   74460   22695 |       0    7986 |    27904    28160    27392 |   72.3
+v2 - hardening            46872 |   46872    8316   73584   22428 |      33    7887 |    27392    27392    26880 |   58.8
+v2 - lifetime hints       46872 |   46872    8316   73584   22428 |      33      33 |    27392    27392    26880 |   72.3
+v2 - one block/task       46720 |   46720    8225   73656   22256 |      35    7805 |    28160    28160    27648 |  120.6
+
+starve: 40 B tasks fill the pool and none finish, then 900 B tasks arrive
+pinned: 100 B tasks, 1 in 20 long-lived, the rest finish, then 900 B tasks arrive

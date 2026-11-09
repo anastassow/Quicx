@@ -1,0 +1,11 @@
+date: 2026-11-08T17:46:22Z
+uname: Darwin Dimitars-MacBook-Pro.local 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:41:15 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6041 arm64
+cpu: Apple M4 Pro
+cores: 12 (8 performance + 4 efficiency)
+ram_bytes: 25769803776
+os: macOS 26.5.1
+model: Mac16,8
+os_page_size: 16384
+compiler: Apple clang version 17.0.0 (clang-1700.6.3.2)
+python: Python 3.14.7
+open_loop_rate: 40000

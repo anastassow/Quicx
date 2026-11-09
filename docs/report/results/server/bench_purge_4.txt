@@ -1,0 +1,2 @@
+mode=purge_on measure=rss blocks=8064 base_kb=1484 init_kb=204 full_kb=8336 drained_kb=1280 held_after_drain_kb=1280 burst_purges=441 cycle_ns_per_block=584.7 cycle_purges=17640 churn_ns_per_task=63.2 churn_purges=0
+mode=purge_off measure=rss blocks=8064 base_kb=1872 init_kb=16 full_kb=8080 drained_kb=8080 held_after_drain_kb=8080 burst_purges=0 cycle_ns_per_block=50.3 cycle_purges=0 churn_ns_per_task=63.2 churn_purges=0

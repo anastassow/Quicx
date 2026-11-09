@@ -1,0 +1,7 @@
+phase=idle measure=rss mem_kb=9924
+phase=100 accepted=655 refused_with="out of memory" next_submit=OK payload_avg=100 mem_full_kb=9924 drained=656/656 mem_after_drain_kb=9924
+phase=900 accepted=180 refused_with="out of memory" next_submit=OK payload_avg=900 mem_full_kb=9924 drained=181/181 mem_after_drain_kb=9924
+phase=40 accepted=1310 refused_with="out of memory" next_submit=OK payload_avg=40 mem_full_kb=9924 drained=1311/1311 mem_after_drain_kb=9924
+phase=300 accepted=262 refused_with="out of memory" next_submit=OK payload_avg=300 mem_full_kb=9924 drained=263/263 mem_after_drain_kb=9924
+phase=nginx accepted=1433 refused_with="out of memory" next_submit=OK payload_avg=191 mem_full_kb=9924 drained=1434/1434 mem_after_drain_kb=9924
+phase=end mem_kb=9924 alive=1
