@@ -329,7 +329,7 @@ def quicx(pal):
     c.text(416, 280, "one thread waits on every socket", size=14.5, within=IO)
     c.path("M800,196 L800,288", color="line", sw=1.2)
     c.badge("binary", 816, 198)
-    c.text(874, 219, "Protocol", size=19, weight=600, color="text", within=IO)
+    c.text(874, 219, "QXP protocol", size=19, weight=600, color="text", within=IO)
     c.text(874, 239, "[protocol.c]", size=12, mono=True, color="muted", within=IO)
     c.text(818, 280, "encodes and decodes frames", size=14.5, within=IO)
     fx = 1104

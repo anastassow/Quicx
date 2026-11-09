@@ -55,7 +55,7 @@ The contribution of this work is engineering and measurement, not a new algorith
 
 \section{System overview}
 
-Figure~\ref{fig:quicx} shows the whole daemon. One event loop (kqueue on macOS, epoll on Linux) wakes up when a socket is readable. \file{server.c} reads and checks each frame: a 6-byte header followed by a body of at most 1,024~B. \file{daemon.c} decides what each message means, and \file{dispacher.c} pairs waiting tasks with idle workers. The budget is split once at start-up by \fn{quicx\_init} (\file{quicx.c}): 3 pages (49,280~B) form the control pool for 1,024 connections and 1,024 workers, and the rest (8,339,328~B, 508 pages) is the task pool.
+Figure~\ref{fig:quicx} shows the whole daemon. One event loop (kqueue on macOS, epoll on Linux) wakes up when a socket is readable. \file{server.c} reads and checks each frame of QXP, the Quicx Protocol (a binary protocol designed for Quicx): a 6-byte header followed by a body of at most 1,024~B. \file{daemon.c} decides what each message means, and \file{dispacher.c} pairs waiting tasks with idle workers. The budget is split once at start-up by \fn{quicx\_init} (\file{quicx.c}): 3 pages (49,280~B) form the control pool for 1,024 connections and 1,024 workers, and the rest (8,339,328~B, 508 pages) is the task pool.
 
 Both diagrams follow the C4 model's notation rules and review checklist \citep{brownc4}: a title that names the diagram type and scope, a legend for every colour, shape, border and line style, a type or technology for every element, and a label and one direction for every arrow.
 

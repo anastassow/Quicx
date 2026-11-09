@@ -1,6 +1,13 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+/*
+QXP, the Quicx Protocol: the binary format producers, workers and the CLI
+use to talk to quicxd. Every message is a 6-byte header (version, type,
+length of the body) followed by the body; a payload is at most
+PROTOCOL_MAX_PAYLOAD bytes.
+*/
+
 /* values for the protocol */
 #define PROTOCOL_VERSION        1
 #define PROTOCOL_HEADER_SIZE    6

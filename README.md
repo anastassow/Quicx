@@ -15,7 +15,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 
 A queue that grows with its backlog is fine on a machine of its own. Next to the application it serves, on a small VM or in a container with a memory limit, the two end up fighting over the same memory. With Quicx you decide up front how much memory the queue may have, and it stays inside that number even when producers outrun the workers.
 
-The binary is 55 KB of C17 with no dependencies. It runs on macOS (kqueue) and Linux (epoll), on x86-64 and arm64. Clients talk to it with a binary protocol of 12 message types behind a 6-byte header, and there is a Java client. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
+The binary is 55 KB of C17 with no dependencies. It runs on macOS (kqueue) and Linux (epoll), on x86-64 and arm64. Clients talk to it over QXP, the Quicx Protocol, a small binary protocol I designed for Quicx: 12 message types behind a 6-byte header. There is a Java client, and any other language can speak QXP directly. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
 
 ## How a task moves through the daemon
 
@@ -38,7 +38,7 @@ Connections and workers live in a separate control pool of 3 pages. A queue full
 The source is about 2,800 lines in `quicx/src`:
 
 - `event_loop.c` waits on every socket with kqueue or epoll, in one thread
-- `protocol.c` reads and writes frames
+- `protocol.c` reads and writes QXP frames
 - `server.c` accepts connections, checks frames and allocates each task's block
 - `daemon.c` handles each message: queue a task, register a worker, forward a result
 - `queue.c`, `dispacher.c` and `workers.c` hold the FIFO, hand tasks to idle workers and track who is idle or busy
@@ -163,7 +163,7 @@ new QuicxWorker("localhost", 16381)
     .start();
 ```
 
-From other languages, speak the protocol directly. Each message is a 6-byte header (version, type, length of the body) followed by the body, and a payload can be at most 1,024 bytes:
+From other languages, speak QXP directly. Each message is a 6-byte header (version, type, length of the body) followed by the body, and a payload can be at most 1,024 bytes:
 
 | Message | Sent by | |
 |---|---|---|
@@ -176,7 +176,7 @@ From other languages, speak the protocol directly. Each message is a 6-byte head
 | `HEARTBEAT` 0x09, `PONG` 0x0A | client, daemon | keep-alive |
 | `STATS` 0x0B, 0x0C | CLI | statistics, over a unix socket |
 
-The layout of every body is in the [protocol documentation](https://quicx.dev/docs/binary-protocol).
+The layout of every body is in the [QXP documentation](https://quicx.dev/docs/binary-protocol).
 
 ### Configuration
 
