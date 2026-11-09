@@ -210,39 +210,45 @@ void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
 }
 
 int cmd_start(int argc, char* argv[]) {
+    /* line-buffered, so the start lines reach a log file before the daemon is stopped */
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     Config c;
     config_defaults(&c);
 
-    int config_provided = 0;
+    /* defaults, then the file, then the command line */
+    const char* config_path = NULL;
+    const char* port_arg    = NULL;
     for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
-            config_load(&c, argv[++i]);
-            config_provided = 1;
-        } else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
-            c.port = atoi(argv[++i]);
-        }
+        if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) config_path = argv[++i];
+        else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) port_arg = argv[++i];
     }
 
-    if (!config_provided) {
-        printf("no --config provided, using built-in defaults\n");
-        config_validate(&c);
-    }
+    if (config_path) config_load(&c, config_path);
+    else             printf("no --config provided, using built-in defaults\n");
+    if (port_arg)    c.port = atoi(port_arg);
+    config_validate(&c);
+
+    char features[96];
+    pool_config_describe(&c.pool, features, sizeof(features));
 
     printf("quicx v%s starting\n", VERSION);
     printf("  port:    %d\n", c.port);
     printf("  pool:    %zu bytes, %u KiB pages given to block sizes on demand\n",
-           c.pool_size, (unsigned)(APOOL_PAGE_SIZE / 1024));
-    if (config_provided && c.class_count > 0)
-        printf("  note:    'class' lines in the config are ignored — the pool sizes itself\n");
+           c.pool.pool_size, (unsigned)(APOOL_PAGE_SIZE / 1024));
+    printf("  apool:   %s\n", features);
 
     static Quicx quicx;
     ApoolStatus st = quicx_init(&quicx, &c);
     if (st != APOOL_OK) {
-        fprintf(stderr, "error: cannot set up a %zu byte pool (status %d)\n", c.pool_size, (int)st);
+        fprintf(stderr, "error: cannot set up a %zu byte pool (status %d)", c.pool.pool_size, (int)st);
+        if (c.pool.warm_pages != POOL_AUTO || c.pool.reserve_pages != POOL_AUTO)
+            fprintf(stderr, " — are warm_pages and reserve_pages below the pool's page count?");
+        fprintf(stderr, "\n");
         return 1;
     }
-    printf("  pages:   %u for tasks, %u kept for connections and workers\n",
-           quicx.mem.num_pages, quicx.ctrl.num_pages);
+    printf("  pages:   %u for tasks (%u kept warm, %u reserved), %u for connections and workers\n",
+           quicx.mem.num_pages, quicx.mem.warm, quicx.mem.reserve, quicx.ctrl.num_pages);
 
     FILE* pf = fopen(PID_FILE, "w");
     if (pf) {

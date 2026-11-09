@@ -1,36 +1,39 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <stddef.h>
-
-#include "incPMAD.h"
+#include "pool_config.h"
 
 #define DEFAULT_PORT 16381
 
 /*
-the built-in defaults carve every size class from ALIGNMENT up to
-MAX_SIZE_OF_SIZE_CLASS, so the pool has to be big enough that even a
-1% slice still holds a usable number of blocks of the largest classes
-*/
-#define DEFAULT_POOL_SIZE (8 * 1024 * 1024)
+everything `quicx start` reads, in this order: the built-in defaults, then
+the file given with --config, then the command line (--port wins over the
+file). the file is ini-style:
 
+    [server]      port
+    [memory]      pool_size
+    [allocator]   reserve, hardening, purge, fullest_first,
+                  warm_pages, reserve_pages
+
+[server] is kept here; [memory] and [allocator] describe the pools and are
+a PoolConfig (pool_config.h). quicx.conf in the repository lists every key
+with its default.
+*/
 typedef struct {
-    int    port;
-    size_t pool_size;
-    size_t sizes[MAX_PMAD_CLASSES];
-    size_t percentages[MAX_PMAD_CLASSES];
-    int    class_count;
+    int        port;  /* [server] */
+    PoolConfig pool;  /* [memory] and [allocator] */
 } Config;
 
 /* fills c with the built-in defaults */
 void config_defaults(Config* c);
 
-/* validates c, printing an error and exiting the process on failure */
-void config_validate(Config* c);
+/* checks c, printing an error and exiting the process if it cannot be used */
+void config_validate(const Config* c);
 
-/* 
-loads config from an ini-style file at path
-into c exits the process on error 
+/*
+reads the ini-style file at path into c, over what c already holds.
+an unknown section or key, or a bad value, prints the file and line and
+exits the process
 */
 void config_load(Config* c, const char* path);
 

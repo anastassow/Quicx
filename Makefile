@@ -26,6 +26,7 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/stats.c \
              quicx/src/cli.c \
              quicx/src/config.c \
+             quicx/src/pool_config.c \
              quicx/src/quicx.c \
              quicx/src/apool.c
 
@@ -65,6 +66,11 @@ test_protocol:
 test_apool:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
 	quicx/src/tests/test_apool.c quicx/src/apool.c \
+	-o $@
+
+test_config:
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
+	quicx/src/tests/test_config.c quicx/src/config.c quicx/src/pool_config.c quicx/src/apool.c \
 	-o $@
 
 test_wire:
@@ -141,7 +147,7 @@ release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 
 clean:
 	rm -f quicxd test_queue test_workers test_dispatcher \
-	      test_protocol test_wire test_apool test_server test_daemon test_stats test_unix
+	      test_protocol test_wire test_apool test_config test_server test_daemon test_stats test_unix
 	rm -rf $(RELEASE_DIR)
 
 dsym_remove:
