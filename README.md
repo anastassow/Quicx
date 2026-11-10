@@ -129,7 +129,7 @@ A Redis list keeps a 100-byte item in about 103 bytes. Quicx keeps each task in 
 
 ## When the budget is full: keep the most valuable work
 
-A queue that is out of memory has to drop something. Quicx 2.0 refuses the newest task; a leaky queue, such as GStreamer's, drops the oldest. Both ignore what the work is worth. With `admission = value`, a producer gives each task a value level from 0 to 15 (`MSG_SUBMIT_VALUED`), and the queue spends its budget on the most valuable tasks: higher levels are dispatched first, and when the budget is full a waiting task of a lower level makes room for a new one. Level 15 is never evicted, so a critical message cannot bounce off a queue full of camera frames. The evicted task's producer gets `MSG_FAILED` with the reason `evicted`.
+A queue that is out of memory has to drop something. Many queues refuse the newest task (Redis with maxmemory, RabbitMQ with reject-publish); a leaky queue, such as GStreamer's, drops the oldest. Both ignore what the work is worth. With `admission = value`, a producer gives each task a value level from 0 to 15 (`MSG_SUBMIT_VALUED`), and the queue spends its budget on the most valuable tasks: higher levels are dispatched first, and when the budget is full a waiting task of a lower level makes room for a new one. Level 15 is never evicted, so a critical message cannot bounce off a queue full of camera frames. The evicted task's producer gets `MSG_FAILED` with the reason `evicted`.
 
 What no general-purpose allocator can tell a queue is which waiting task, if freed, would let the new one in. apool can: a task is evicted only when `apool_free_makes_room` proves its memory fits the new task, either a block of the same size or the last block of a page that the new size is allowed to take. A task is never thrown away for nothing. Plain `MSG_SUBMIT` tasks all get level 8, so for clients that send no values `value` behaves exactly like `refuse`.
 
@@ -137,7 +137,7 @@ Measured with the real daemon: a 256 KiB budget (1,752 tasks), one worker taking
 
 | | steady: valuable tasks done | steady: wait of a valuable task | steady: tasks evicted | burst: valuable tasks done |
 |---|---:|---:|---:|---:|
-| 2.0 without values | 31.6 % | 3,506 ms | 0 | 100 % |
+| no values, `admission = refuse` | 31.6 % | 3,506 ms | 0 | 100 % |
 | values, `admission = refuse` | 31.2 % | 4.1 ms | 0 | 100 % |
 | values, `admission = oldest` | 100 % | 4.1 ms | 20,749 | 64.6 % |
 | values, `admission = value` | **100 %** | **4.1 ms** | **2,056** | **100 %** |
