@@ -85,9 +85,14 @@ static void handle_new_connection(int loop_fd, int server_fd, Quicx* quicx) {
         return;
     }
 
+    /*
+    the block may have held a task before: zero every field, so nothing
+    stale (a worker pointer above all) survives into the new connection
+    */
+    memset(conn, 0, sizeof(*conn));
     conn->fd     = fd;
     conn->type   = CONN_UNKNOWN;
-    conn->as.worker.worker = NULL;   /* a reused block still holds an old pointer */
+    conn->as.worker.worker = NULL;
 
     set_nonblocking(fd);
     set_nodelay(fd);
@@ -252,6 +257,7 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
     Connection* conn = (Connection*)apool_alloc(&quicx->ctrl, sizeof(Connection));
     if (!conn) { close(fd); return; }
 
+    memset(conn, 0, sizeof(*conn));
     conn->fd     = fd;
     conn->type   = CONN_CLI;
     conn->as.worker.worker = NULL;
