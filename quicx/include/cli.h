@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include "stats.h"
 
-#define VERSION          "2.0.0"
+#define VERSION          "2.1.0"
 #define PID_FILE         "/tmp/quicx.pid"
 
 /* unix socket the daemon listens on — cli connects here for stats requests */

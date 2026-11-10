@@ -17,7 +17,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 - [Install and run](#install-and-run)
 - [When the budget is full: keep the most valuable work](#when-the-budget-is-full-keep-the-most-valuable-work)
 - [Plan capacity before you deploy](#plan-capacity-before-you-deploy)
-- [One daemon per core](#one-daemon-per-core)
+- [Isolation: a daemon per part, a core per daemon](#isolation-a-daemon-per-part-a-core-per-daemon)
 - [RTOS-style guarantees on a normal OS](#rtos-style-guarantees-on-a-normal-os)
 - [How a task moves through the daemon](#how-a-task-moves-through-the-daemon)
 - [The allocator](#the-allocator)
@@ -36,7 +36,8 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 | The most valuable work survives overload | 100 % of valuable tasks done under overload, against 31.6 % for a queue that refuses new tasks; a valuable task waits 4.1 ms instead of 3.5 s |
 | Memory is a hard limit | the queue never takes more than its budget; a full queue answers `ERROR 0x01` and keeps running |
 | Capacity is known in advance | the formula below gave exactly the measured count in every test (46,593 tasks of 100 B in 8 MiB) |
-| Daemons are isolated and scale by core | 2 daemons on 2 cores: 35,000 tasks/s against 18,200 for one; filling one of ten daemons left the other nine untouched |
+| Daemons isolate the parts of a device and scale by core | 2 daemons on 2 cores: 35,000 tasks/s against 18,200 for one; filling one of ten daemons left the other nine untouched |
+| Bigger tasks when needed | `make MAX_PAYLOAD=8192` builds a daemon for 8 KiB tasks; 1,002 tasks of 8,000 B fit in 8 MiB, exactly what the formula gives |
 | Small and fast | 32 KB on Linux arm64, no dependencies; 81,900 tasks/s and a 49 µs median on an Apple M4 Pro |
 
 ## Install and run
@@ -54,14 +55,16 @@ quicx status                       # what the daemon is doing right now
 quicx stop
 ```
 
-`quicx status` with 1,200 tasks of 100 B and 300 of 900 B waiting and no worker connected:
+The command line is the whole interface for running Quicx: `quicx start`, `stop`, `status` and `version`, each with `--port` so several daemons on one machine are told apart, and `--config` for a settings file. `quicx status` reads the live counters over a unix socket. With 1,200 tasks of 100 B and 300 of 900 B waiting and no worker connected:
 
 ```
-  quicx v2.0.0  ·  pid 8278  ·  up 0h 0m 00s
+
+  quicx v2.1.0  ·  pid 88813  ·  up 0h 0m 01s
 
   tasks     submitted       1,500
             completed           0   ░░░░░░░░░░░░░░░░░░░░     0.0%
             failed              0                            0.0%
+            evicted             0                            0.0%   for more valuable tasks
             in flight       1,500   = 1500 queued + 0 running
             queued          1,500
 
@@ -138,9 +141,9 @@ tasks      = (task pages - task pages / 64) * per page
 
 An example: a camera makes 30 frames a second and the model analyses 10, so 20 more frames wait every second. Each task carries the frame's number and path (48 bytes), a 112-byte block. With `pool_size = 208K` Quicx holds exactly 1,314 waiting frames in 208 KB of queue memory. The queue is full after about 65 seconds; from then on more valuable frames displace less valuable ones, and the device keeps running.
 
-## One daemon per core
+## Isolation: a daemon per part, a core per daemon
 
-Each daemon is a separate process with its own port, budget, CLI socket and pid file. Daemons share nothing, so they never wait for each other: a critical stream can have a daemon of its own that a flood elsewhere cannot reach, and work can be spread across several the way a load balancer spreads requests.
+A budget is a wall: whatever happens to the flow of tasks, the queue cannot take memory the model or the OS needs. Several daemons turn that into isolation between the parts of a device. Give the camera, the motor commands and the telemetry a daemon each, with its own budget: a flood of frames fills the camera's budget and nothing else, and a stop command never waits behind frames. Each daemon is a separate process with its own port, budget, CLI socket and pid file. Daemons share nothing, so they never wait for each other, and work can be spread across several the way a load balancer spreads requests.
 
 ```sh
 quicx start --port 16401 --config camera.conf
@@ -162,18 +165,7 @@ The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port us
 
 ## RTOS-style guarantees on a normal OS
 
-Robots, cameras and other devices with a model on board need a task queue between the parts that make work and the parts that do it. On microcontrollers that job falls to a real-time OS such as FreeRTOS or Zephyr. The cameras and the AI usually run on Linux, where a queue grows until memory runs out.
-
-| | RTOS (FreeRTOS, Zephyr) | Linux with a plain queue | Linux with Quicx |
-|---|---|---|---|
-| queue memory known in advance | yes | no | yes |
-| critical work goes first | yes, task priorities | only with a priority queue | yes, levels 0-15 |
-| when the queue is full | the sender waits or gets an error | it grows until memory runs out | less valuable work makes room; level 15 is never refused |
-| constant-time memory per task | yes, block pools | not always | yes, apool |
-| drivers, networking, AI frameworks | few | all | all |
-| guaranteed deadlines | yes | no | no |
-
-Quicx does not make Linux a real-time OS: it promises nothing about how many microseconds a task takes. Where hard deadlines matter, such as motor control, an RTOS stays the right tool, and Quicx can run beside it on the board that does the thinking. apool works inside one block of memory and does not depend on the OS, so porting it and the eviction rule to an RTOS is a next step.
+On microcontrollers, a real-time OS such as FreeRTOS or Zephyr gives a task queue memory fixed in advance and priorities. The cameras and models of a robot usually run on Linux, where a plain queue grows until memory runs out. Quicx brings those two properties to Linux: queue memory known before the device starts, and critical work that goes first and is never refused. It also goes one step further than an RTOS queue, which makes the sender wait or returns an error when full, whatever the message: Quicx evicts less valuable work instead. It does not give hard deadlines; for motor control, keep the RTOS.
 
 ## How a task moves through the daemon
 
@@ -264,9 +256,18 @@ Tests: 155 unit checks (`test_apool` 50, `test_config` 45, `test_wire` 34, `test
 
 ## Research: learning what a task is worth
 
-A camera often can't tell which frame is valuable until the model has looked at it. Workers do know, after the fact. [`docs/research/learned-value`](docs/research/learned-value) simulates Quicx's admission rule with ten ways of learning a task's level from the scores workers return, on four workloads.
+The next improvement of eviction is machine learning: Quicx learning what a task is worth instead of being told. In many systems the value of a task is known only after the work is done: the model found something on the frame, one customer's jobs produce useful results more often than another's, a check failed. Workers know it then. If a worker returns a score with DONE, the daemon can learn which tasks are worth keeping and give learned levels to tasks sent without one. The eviction rule stays the same and still never evicts without proven room. I am writing research papers on value-aware eviction with proven room and on learning task value in queues in general, not only for cameras.
 
-On a field robot (two cameras at 15 frames/s, a model that analyses 8, disease in patches of about 3 s), logistic regression on the sender's recent scores and the frame's size, plus one probe frame per camera every 0.5 s, analysed 66.7 % of the diseased frames against 27.7 % for a queue without values, and found sick patches after 0.47 s instead of 16.2 s. Learning without exploration did worse than not learning, reinforcement learning of the level itself reached 51.6 %, and where nothing predicts value no strategy helps. The next step is `admission = learned` in the daemon, with a score byte in DONE.
+[`docs/research/learned-value`](docs/research/learned-value) simulates the admission rule with ten ways of learning a level from worker scores (running means, recent means, exploration, Thompson sampling, logistic regression, reinforcement learning of the level) on four workloads, five seeds each:
+
+| Workload | no values | best learned | knows the result in advance |
+|---|---:|---:|---:|
+| a robot with two cameras; disease comes in patches | 27.7 % | 66.7 % (logistic regression with probes) | 99.9 % |
+| the same, the field changes halfway | 27.3 % | 67.2 % (logistic regression with probes) | 99.6 % |
+| one server, ten customers whose tasks are useful at different rates | 36.4 % | 73.4 % (mean per customer) | 100 % |
+| nothing predicts value | 27.7 % | about the same, 27-28 % | 100 % |
+
+(Share of the valuable tasks that got done under overload.) Learning helps where value has a visible cause: who sent the task, its type, a streak of results. It needs exploration: learning without it did worse than not learning, because a sender that looks worthless gets evicted and never sends back a result that would correct the estimate. Learning the value and leaving the order to the rule beat reinforcement learning of the level itself (51.6 % on the robot). The best strategy keeps a few numbers per sender and does a few multiplications per task. The plan is `admission = learned` in the daemon, with a one-byte score in DONE, measured on the real daemon the way value-aware admission was.
 
 ## Using it from code
 
@@ -284,7 +285,7 @@ new QuicxWorker("localhost", 16381)
     .start();
 ```
 
-The Java client sends plain SUBMIT; value levels need QXP directly for now. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body. A valued task from Python:
+The Java client sends plain SUBMIT; value levels need QXP directly for now. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body; a payload is at most 1,024 bytes unless the daemon was built with a larger `MAX_PAYLOAD`. A valued task from Python:
 
 ```python
 import socket, struct
@@ -344,7 +345,7 @@ A misspelled key or a value that can't be used stops Quicx before it starts, wit
 - Nothing is persisted. A restart empties the queue.
 - There is no redelivery. A task is freed as it is sent, so if the worker dies, the task is gone.
 - No retries or delayed tasks.
-- Payloads over 1,024 bytes are refused with `ERROR 0x03`; send a path or an id and keep large data elsewhere.
+- Payloads over 1,024 bytes are refused with `ERROR 0x03`. For bigger tasks build with `make MAX_PAYLOAD=N` (a multiple of 16, up to 16,320); for large data, send a path or an id and keep the data elsewhere.
 - One daemon uses one core. For more, run one daemon per core.
 - No real-time deadlines.
 
@@ -359,6 +360,7 @@ make            # the daemon and the unit tests
 make test       # test_apool (50 checks), test_config (45), test_wire (34), test_admission (26)
 make e2e        # 27 end-to-end checks against ./quicxd, needs python3
 make bench      # bench_apool and bench_purge
+make check-big  # a daemon for 8 KiB payloads, checked against the capacity formula
 ```
 
 ## Repository layout

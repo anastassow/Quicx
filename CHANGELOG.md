@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 (2026-11-10)
 
+- `make MAX_PAYLOAD=N` builds a daemon for payloads above 1,024 bytes (a multiple of 16, up to 16,320). The page record now keeps the size class in 16 bits, since such a build has more than 255 sizes; `make check-big` checks an 8 KiB build against the capacity formula.
 - Value-aware admission: `MSG_SUBMIT_VALUED` (0x0D) carries a level 0-15, the queue keeps one FIFO per level and dispatches the highest first, and `[allocator] admission = refuse | oldest | value` (default `value`) decides what happens when the budget is full. A task is evicted only when `apool_free_makes_room` proves its memory fits the new one; its producer gets `FAILED` with the reason `evicted`. Level 15 is never evicted. `test_admission` adds 26 checks.
 - `quicx status` shows evicted tasks; the stats header is 81 bytes.
 - A disconnecting producer is forgotten: results for its queued and running tasks are no longer sent to a later connection that reuses the descriptor.
