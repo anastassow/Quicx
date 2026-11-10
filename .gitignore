@@ -59,14 +59,6 @@ dkms.conf
 /test_apool
 /test_config
 /test_wire
-/test_queue
-/test_workers
-/test_dispatcher
-/test_protocol
-/test_server
-/test_daemon
-/test_stats
-/test_unix
 /bench_apool
 /bench_purge
 /releases/

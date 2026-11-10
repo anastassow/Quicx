@@ -14,10 +14,10 @@ make
 ## What it measures
 
 **End-to-end latency**: from when a task was *due to be sent* until its `DONE`
-comes back. That is the number a task queue is judged on. The existing
-`bench_quicx.py` measures submit→OK, which times only the daemon's ack and
-never touches the worker round trip — it cannot see a slow or starved worker
-pool at all.
+comes back. That is the number a task queue is judged on. The Python
+benchmark this replaced measured submit→OK, which times only the daemon's ack
+and never touches the worker round trip, so it could not see a slow or
+starved worker pool at all.
 
 The clients are C, not Python. A Python client tops out around 50–100k
 socket ops/sec and hits the GIL across threads, so it saturates before the
