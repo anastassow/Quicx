@@ -249,7 +249,7 @@ quicx status --port 16401
 quicx stop --port 16402
 ```
 
-The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port uses `/tmp/quicx-<port>.sock` and `/tmp/quicx-<port>.pid`. With ten daemons of 8 MiB on one Mac, filling one to its limit left the other nine accepting tasks as before; an idle daemon takes about 1.4 MiB. Under full load the machine splits evenly between them: on the M4 Pro two daemons got 37,200 tasks/s each and six got 10,000 each, within 5 % of one another ([results](docs/report/results/several/summary.md)). The total does not grow there, because the test's producers and workers run on the same cores.
+The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port uses `/tmp/quicx-<port>.sock` and `/tmp/quicx-<port>.pid`. With ten daemons of 8 MiB on one Mac, filling one to its limit left the other nine accepting tasks as before; an idle daemon takes about 1.4 MiB. Under full load the machine splits evenly between them: on the M4 Pro two daemons got 37,200 tasks/s each and six got 10,000 each, within 5 % of one another ([results](docs/report/results/several/summary.md)). The total does not grow there, because the test's producers and workers run on the same cores. Give each daemon a core of its own and it does: on a Linux i3-2100 with two cores, one daemon pinned with `taskset` did 18,200 tasks/s and two did 35,000 (1.92 times), each using 96-97 % of its core ([results](docs/report/results/several/linux-i3.md)).
 
 ## What Quicx does not do
 
