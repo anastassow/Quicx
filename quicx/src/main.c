@@ -12,8 +12,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (strcmp(argv[1], "start") == 0)   return cmd_start(argc, argv);
-    if (strcmp(argv[1], "stop") == 0)    return cmd_stop();
-    if (strcmp(argv[1], "status") == 0)  return cmd_status();
+    if (strcmp(argv[1], "stop") == 0)    return cmd_stop(argc, argv);
+    if (strcmp(argv[1], "status") == 0)  return cmd_status(argc, argv);
     if (strcmp(argv[1], "version") == 0) return cmd_version();
 
     fprintf(stderr, "unknown command: %s\n\n", argv[1]);

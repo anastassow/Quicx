@@ -3,6 +3,7 @@
 #include "protocol.h"
 #include "daemon.h"
 #include "apool.h"
+#include "cli.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +15,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 
 /* functions for the sockets */
 
@@ -270,6 +270,10 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
 
 int server_start(int port, Quicx* quicx) {
 
+    /* the CLI socket belongs to this port, so daemons on other ports keep theirs */
+    char cli_sock[108], pid_unused[108];
+    cli_runtime_paths(port, cli_sock, sizeof(cli_sock), pid_unused, sizeof(pid_unused));
+
     /* TCP socket */
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
@@ -310,9 +314,9 @@ int server_start(int port, Quicx* quicx) {
         struct sockaddr_un un;
         memset(&un, 0, sizeof(un));
         un.sun_family = AF_UNIX;
-        strncpy(un.sun_path, UNIX_SOCKET_PATH,
+        strncpy(un.sun_path, cli_sock,
                 sizeof(un.sun_path) - 1);
-        unlink(UNIX_SOCKET_PATH);
+        unlink(cli_sock);
 
         if (bind(unix_fd, (struct sockaddr*)&un, sizeof(un)) < 0) {
             perror("unix bind");
@@ -320,7 +324,7 @@ int server_start(int port, Quicx* quicx) {
             unix_fd = -1;
         } else {
             listen(unix_fd, 16);
-            printf("quicx cli socket: %s\n", UNIX_SOCKET_PATH);
+            printf("quicx cli socket: %s\n", cli_sock);
         }
     }
 
@@ -375,7 +379,7 @@ int server_start(int port, Quicx* quicx) {
     close(server_fd);
     if (unix_fd >= 0) {
         close(unix_fd);
-        unlink(UNIX_SOCKET_PATH);
+        unlink(cli_sock);
     }
     return 0;
 }

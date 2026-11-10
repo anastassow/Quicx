@@ -217,6 +217,20 @@ reserve_pages = auto    # pages held back by the reserve (1/64 of the pages)
 
 A misspelled key or a value that can't be used stops Quicx before it starts, with the file and line, for example `quicx.conf:14: purge must be on or off, not 'sometimes'`. `--port` on the command line overrides the file. Config files from 1.x still load; their `class` lines are ignored.
 
+
+### Several daemons on one machine
+
+Each daemon has its own port, budget, CLI socket and pid file, so one machine can run a queue per application or per customer, each held to its own limit:
+
+```sh
+quicx start --port 16401 --config customer-a.conf
+quicx start --port 16402 --config customer-b.conf
+quicx status --port 16401
+quicx stop --port 16402
+```
+
+The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port uses `/tmp/quicx-<port>.sock` and `/tmp/quicx-<port>.pid`. With ten daemons of 8 MiB on one Mac, filling one to its limit left the other nine accepting tasks as before; an idle daemon takes about 1.4 MiB.
+
 ## What Quicx does not do
 
 - Nothing is persisted. A restart empties the queue.

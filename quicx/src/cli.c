@@ -20,24 +20,41 @@
 #include "server.h"
 #include "apool.h"
 
-int cli_connect(void) {
+void cli_runtime_paths(int port, char* sock, size_t sock_len, char* pid, size_t pid_len) {
+    if (port == DEFAULT_PORT) {
+        snprintf(sock, sock_len, "%s", UNIX_SOCKET_PATH);
+        snprintf(pid,  pid_len,  "%s", PID_FILE);
+    } else {
+        snprintf(sock, sock_len, "/tmp/quicx-%d.sock", port);
+        snprintf(pid,  pid_len,  "/tmp/quicx-%d.pid", port);
+    }
+}
+
+int cli_connect(const char* sock_path) {
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) { perror("socket"); return -1; }
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, UNIX_SOCKET_PATH,
+    strncpy(addr.sun_path, sock_path,
             sizeof(addr.sun_path) - 1);
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         fprintf(stderr,
-                "error: cannot connect to quicx daemon\n"
-                "       is it running? start with: quicx start\n");
+                "error: cannot connect to quicx daemon (%s)\n"
+                "       is it running? start with: quicx start\n", sock_path);
         close(fd);
         return -1;
     }
     return fd;
+}
+
+/* --port N for the commands that talk to a running daemon; DEFAULT_PORT if absent */
+static int port_from_args(int argc, char* argv[]) {
+    for (int i = 2; i < argc; i++)
+        if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) return atoi(argv[i + 1]);
+    return DEFAULT_PORT;
 }
 
 int cli_read_stats(int fd, StatsHeader* hdr,
@@ -250,7 +267,10 @@ int cmd_start(int argc, char* argv[]) {
     printf("  pages:   %u for tasks (%u kept warm, %u reserved), %u for connections and workers\n",
            quicx.mem.num_pages, quicx.mem.warm, quicx.mem.reserve, quicx.ctrl.num_pages);
 
-    FILE* pf = fopen(PID_FILE, "w");
+    char sock_path[108], pid_path[108];
+    cli_runtime_paths(c.port, sock_path, sizeof(sock_path), pid_path, sizeof(pid_path));
+
+    FILE* pf = fopen(pid_path, "w");
     if (pf) {
         fprintf(pf, "%d\n", getpid());
         fclose(pf);
@@ -259,14 +279,18 @@ int cmd_start(int argc, char* argv[]) {
     int r = server_start(c.port, &quicx);
 
     quicx_destroy(&quicx);
-    unlink(PID_FILE);
+    unlink(pid_path);
     return r;
 }
 
-int cmd_stop(void) {
-    FILE* f = fopen(PID_FILE, "r");
+int cmd_stop(int argc, char* argv[]) {
+    int port = port_from_args(argc, argv);
+    char sock_path[108], pid_path[108];
+    cli_runtime_paths(port, sock_path, sizeof(sock_path), pid_path, sizeof(pid_path));
+
+    FILE* f = fopen(pid_path, "r");
     if (!f) {
-        fprintf(stderr, "quicx is not running\n");
+        fprintf(stderr, "quicx is not running on port %d\n", port);
         return 1;
     }
 
@@ -279,13 +303,17 @@ int cmd_stop(void) {
         return 1;
     }
 
-    unlink(PID_FILE);
+    unlink(pid_path);
     printf("quicx stopped (pid %d)\n", pid);
     return 0;
 }
 
-int cmd_status(void) {
-    int fd = cli_connect();
+int cmd_status(int argc, char* argv[]) {
+    int port = port_from_args(argc, argv);
+    char sock_path[108], pid_path[108];
+    cli_runtime_paths(port, sock_path, sizeof(sock_path), pid_path, sizeof(pid_path));
+
+    int fd = cli_connect(sock_path);
     if (fd < 0) return 1;
 
     protocol_send_stats_request(fd);
@@ -311,7 +339,7 @@ int cmd_status(void) {
     }
 
     int pid = 0;
-    FILE* pf = fopen(PID_FILE, "r");
+    FILE* pf = fopen(pid_path, "r");
     if (pf) {
         if (fscanf(pf, "%d", &pid) != 1) pid = 0;
         fclose(pf);
@@ -330,7 +358,7 @@ void print_usage(void) {
     printf("quicx v%s — lightweight task queue daemon\n\n", VERSION);
     printf("usage:\n");
     printf("  quicx start [--config FILE] [--port N]\n");
-    printf("  quicx stop\n");
-    printf("  quicx status\n");
+    printf("  quicx stop [--port N]\n");
+    printf("  quicx status [--port N]\n");
     printf("  quicx version\n");
 }
