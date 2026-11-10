@@ -15,7 +15,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 
 A queue that grows with its backlog is fine on a machine of its own. Next to the application it serves, on a small VM or in a container with a memory limit, the two end up fighting over the same memory. With Quicx you decide up front how much memory the queue may have, and it stays inside that number even when producers outrun the workers.
 
-The binary is 55 KB of C17 with no dependencies. It runs on macOS (kqueue) and Linux (epoll), on x86-64 and arm64. Clients talk to it over QXP, the Quicx Protocol, a small binary protocol I designed for Quicx: 12 message types behind a 6-byte header. There is a Java client, and any other language can speak QXP directly. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
+It is one C17 binary with no dependencies: 32 KB on Linux arm64 (a Raspberry Pi), 35 KB on Linux x86-64, 43 KB and 72 KB on Intel and Apple-silicon Macs. It runs on macOS (kqueue) and Linux (epoll). Clients talk to it over QXP, the Quicx Protocol, a small binary protocol I designed for Quicx: 12 message types behind a 6-byte header. There is a Java client, and any other language can speak QXP directly. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
 
 ## How a task moves through the daemon
 
@@ -106,9 +106,26 @@ Physical memory of the whole daemon process during one burst, in KB, median of 3
 | queue full | 9,088 | 9,816 |
 | after the queue drains | 2,080 | 2,736 |
 
-During the throughput runs the pool never had more than 14 of its 508 pages in use (2.8%), sampled ten times a second. The binary is 54.9 KB, built with `-O2` and not stripped. The allocator on its own takes 14.8 ns per task (one alloc and one free) on the M4 Pro and 72.8 ns on the i3.
+During the throughput runs the pool never had more than 14 of its 508 pages in use (2.8%), sampled ten times a second. Built with Apple clang `-O2` and not stripped, the binary is 54.9 KB; the stripped release binaries are 32 to 72 KB. The allocator on its own takes 14.8 ns per task (one alloc and one free) on the M4 Pro and 72.8 ns on the i3.
 
 The raw output of every run is in [`docs/report/results`](docs/report/results), and `docs/report/scripts/run_all.sh` produces it again.
+
+## Next to Redis
+
+Redis is where most task queues live, so I ran the two side by side: each in a Docker container limited to 64 MB, both sent the same 100-byte tasks at 40,000 a second by one producer. Redis stored them in a list, the most compact way it can hold a queue. Memory is what each container actually used. [Scripts](docs/report/scripts/redis/README.md) and [raw results](docs/report/results/redis).
+
+With each program's default settings, Redis has no memory limit. It took 588,400 tasks and kept growing until Linux killed it at 14.7 s, and with it every task in the queue. Quicx stopped at its 8 MiB: it took 46,593 tasks, answered `ERROR 0x01` to the next 583,007, never went past 11.7 MiB, and dropped back to 3.4 MiB once eight workers had emptied it.
+
+Given the same limit, Redis holds more:
+
+| | Redis, `maxmemory` | Quicx, `pool_size` |
+|---|---:|---:|
+| 8 MiB: tasks accepted | 70,617 | 46,593 |
+| 8 MiB: peak memory of the container | 14.3 MiB | 11.6 MiB |
+| 56 MiB: tasks accepted | 553,623 | 327,267 |
+| 56 MiB: peak memory of the container | 63.7 MiB | 59.3 MiB |
+
+A Redis list keeps a 100-byte item in about 103 bytes. Quicx keeps each task in a 176-byte block: the payload plus a 64-byte record with the task's id, its type and the connection its result goes back to. Both refuse new work once full and keep running. The difference is what the limit means. `maxmemory` counts Redis's data, not the process: set to 56 MiB, Redis peaked at 63.7 MiB, 0.3 MiB short of being killed by the container. Quicx's budget is all of its task memory, so 56 MiB came to 59.3 MiB with the program itself. A smaller task record is the obvious next step.
 
 ## Install and run
 
@@ -216,7 +233,7 @@ A C17 compiler and `make` are enough.
 
 ```sh
 make            # the daemon and the unit tests
-make test       # test_apool (50 checks), test_config (40), test_wire (28)
+make test       # test_apool (50 checks), test_config (40), test_wire (34)
 make e2e        # 27 end-to-end checks against ./quicxd, needs python3
 make bench      # bench_apool and bench_purge
 ```
@@ -230,6 +247,7 @@ quicx/include, quicx/src   the daemon
 quicx/src/tests            unit tests and allocator benchmarks
 pmad/                      PMAD, the allocator of 1.x, kept for the comparison below
 docs/report/               the report: LaTeX source, raw results, scripts, diagrams
+docs/report/scripts/redis/ the comparison with Redis
 docs/assets/               images used in this README
 quicx.conf                 every setting, with its default value
 ```
