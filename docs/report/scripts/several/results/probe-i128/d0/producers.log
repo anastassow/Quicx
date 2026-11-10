@@ -1,0 +1,2 @@
+producer  sent=52481 ok=52481 done=52481 err=0 dropped_conns=0 measured=8.00s thr=5.3k/s samples=41498
+producer  sent=52456 ok=52456 done=52456 err=0 dropped_conns=0 measured=8.00s thr=5.3k/s samples=41515

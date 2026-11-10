@@ -1,0 +1,16 @@
+worker 10  tasks=2037 lines=2037 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1016 3xx=403 4xx=210 5xx=408
+worker 7   tasks=2035 lines=2035 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1022 3xx=421 4xx=193 5xx=399
+worker 8   tasks=2037 lines=2037 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1082 3xx=397 4xx=201 5xx=357
+worker 12  tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1009 3xx=402 4xx=211 5xx=414
+worker 11  tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1011 3xx=433 4xx=191 5xx=401
+worker 6   tasks=2037 lines=2037 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1054 3xx=393 4xx=189 5xx=401
+worker 16  tasks=2035 lines=2035 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=988 3xx=412 4xx=214 5xx=421
+worker 9   tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1006 3xx=404 4xx=201 5xx=425
+worker 15  tasks=2037 lines=2037 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1055 3xx=388 4xx=192 5xx=402
+worker 14  tasks=2037 lines=2037 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1004 3xx=422 4xx=211 5xx=400
+worker 13  tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=994 3xx=426 4xx=219 5xx=397
+worker 4   tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1031 3xx=426 4xx=176 5xx=403
+worker 2   tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=983 3xx=410 4xx=220 5xx=423
+worker 5   tasks=2035 lines=2035 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1020 3xx=397 4xx=206 5xx=412
+worker 3   tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.4ms 2xx=1091 3xx=361 4xx=188 5xx=396
+worker 1   tasks=2036 lines=2036 parse_fail=0 bad_frames=0 busy=0.3ms 2xx=1063 3xx=396 4xx=207 5xx=370
