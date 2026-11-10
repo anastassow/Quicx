@@ -59,6 +59,7 @@ dkms.conf
 /test_apool
 /test_config
 /test_wire
+/test_admission
 /bench_apool
 /bench_purge
 /releases/

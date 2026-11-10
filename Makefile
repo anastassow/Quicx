@@ -36,14 +36,14 @@ QUICX_CORE = quicx/src/queue.c \
 # make test     run the unit tests
 # make e2e      run the end-to-end tests against ./quicxd (python3)
 # make bench    the allocator benchmarks
-all: quicxd test_apool test_config test_wire
+all: quicxd test_apool test_config test_wire test_admission
 
 bench: bench_apool bench_purge
 
 # the targets list no header or source dependencies, so they are phony:
 # every `make` rebuilds them and a source change can never leave a stale binary
 .PHONY: all bench test e2e release clean dsym_remove \
-        quicxd test_apool test_config test_wire bench_apool bench_purge
+        quicxd test_apool test_config test_wire test_admission bench_apool bench_purge
 
 quicxd:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
@@ -77,13 +77,20 @@ test_wire:
 	quicx/src/tests/test_wire.c quicx/src/protocol.c \
 	-o $@
 
-test: test_apool test_config test_wire
+test_admission:
+	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
+	quicx/src/tests/test_admission.c $(QUICX_CORE) \
+	-o $@ -lpthread
+
+test: test_apool test_config test_wire test_admission
 	@echo "--- test_apool ---"
 	./test_apool
 	@echo "--- test_config ---"
 	./test_config quicx.conf
 	@echo "--- test_wire ---"
 	./test_wire
+	@echo "--- test_admission ---"
+	./test_admission
 	@echo "--- all unit tests passed ---"
 
 e2e: quicxd
@@ -126,7 +133,7 @@ release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 	@echo "✓ Release v$(VERSION) built in $(OUT_DIR)"
 
 clean:
-	rm -f quicxd test_apool test_config test_wire bench_apool bench_purge
+	rm -f quicxd test_apool test_config test_wire test_admission bench_apool bench_purge
 	rm -rf $(RELEASE_DIR)
 
 dsym_remove:
