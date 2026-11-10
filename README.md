@@ -121,7 +121,7 @@ Given the same limit, Redis holds more:
 | | Redis, `maxmemory` | Quicx, `pool_size` |
 |---|---:|---:|
 | 8 MiB: tasks accepted | 70,617 | 46,593 |
-| 8 MiB: peak memory of the container | 14.3 MiB | 11.6 MiB |
+| 8 MiB: peak memory of the container | 13.9 MiB | 11.2 MiB |
 | 56 MiB: tasks accepted | 553,623 | 327,267 |
 | 56 MiB: peak memory of the container | 63.7 MiB | 59.3 MiB |
 
