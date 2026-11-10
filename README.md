@@ -249,7 +249,7 @@ quicx status --port 16401
 quicx stop --port 16402
 ```
 
-The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port uses `/tmp/quicx-<port>.sock` and `/tmp/quicx-<port>.pid`. With ten daemons of 8 MiB on one Mac, filling one to its limit left the other nine accepting tasks as before; an idle daemon takes about 1.4 MiB.
+The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port uses `/tmp/quicx-<port>.sock` and `/tmp/quicx-<port>.pid`. With ten daemons of 8 MiB on one Mac, filling one to its limit left the other nine accepting tasks as before; an idle daemon takes about 1.4 MiB. Under full load the machine splits evenly between them: on the M4 Pro two daemons got 37,200 tasks/s each and six got 10,000 each, within 5 % of one another ([results](docs/report/results/several/summary.md)). The total does not grow there, because the test's producers and workers run on the same cores.
 
 ## What Quicx does not do
 
