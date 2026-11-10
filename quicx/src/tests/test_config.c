@@ -18,6 +18,7 @@ build: make test_config        run: ./test_config [path/to/quicx.conf]
 #include <unistd.h>
 
 #include "config.h"
+#include "admission.h"
 
 static int passed, failed;
 
@@ -73,7 +74,7 @@ static void test_defaults(void) {
     pool_config_describe(&c.pool, d, sizeof(d));
     check("described as 'reserve, hardening, purge; when full: value'",
           strcmp(d, "reserve, hardening, purge; when full: value") == 0);
-    check("admission defaults to value", pc.admission == ADMISSION_VALUE);
+    check("admission defaults to value", c.pool.admission == ADMISSION_VALUE);
 }
 
 static void test_values(void) {
