@@ -1,5 +1,8 @@
 #include "apool.h"
 
+_Static_assert(APOOL_MAX_BLOCK % APOOL_ALIGN == 0, "APOOL_MAX_BLOCK must be a multiple of APOOL_ALIGN");
+_Static_assert(APOOL_MAX_BLOCK <= APOOL_PAGE_SIZE, "a block must fit in one page");
+
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -134,10 +137,10 @@ static uint32_t take_page(Apool* p, int c, int lt) {
 
     ApoolPage* pg = &p->pages[pi];
     if (pg->purged) unpurge(p, pi);
-    if (pg->last_cls != APOOL_FREE_PAGE && pg->last_cls != (uint8_t)c) p->reshapes++;
+    if (pg->last_cls != APOOL_FREE_PAGE && pg->last_cls != (uint16_t)c) p->reshapes++;
 
-    pg->cls       = (uint8_t)c;
-    pg->last_cls  = (uint8_t)c;
+    pg->cls       = (uint16_t)c;
+    pg->last_cls  = (uint16_t)c;
     pg->lt        = (uint8_t)lt;
     pg->free_list = NULL;
     pg->bump      = 0;
@@ -346,7 +349,7 @@ int apool_free_makes_room(const Apool* p, const void* victim, size_t size) {
     int c = (int)(ROUND_UP(size, APOOL_ALIGN) / APOOL_ALIGN) - 1;
 
     /* a block of the same size, in a page apool_alloc searches (lifetime 0) */
-    if (pg->cls == (uint8_t)c && pg->lt == 0) return 1;
+    if (pg->cls == (uint16_t)c && pg->lt == 0) return 1;
 
     /* the last block of a page: the page goes back to the free list, and the
        size may take it unless the reserve keeps it for a size that owns none */

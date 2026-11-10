@@ -46,15 +46,18 @@ Live blocks are never moved (the caller holds pointers to them).
 #include <stdint.h>
 
 #define APOOL_ALIGN        16
-#define APOOL_MAX_BLOCK    1088                              /* a 64 B Task record + up to 1,024 B payload */
-#define APOOL_NUM_CLASSES  (APOOL_MAX_BLOCK / APOOL_ALIGN)   /* 68 sizes: 16, 32, ... 1088 */
+#ifndef APOOL_MAX_BLOCK
+#define APOOL_MAX_BLOCK    1088                              /* a 64 B Task record + up to 1,024 B payload; make MAX_PAYLOAD=N raises it */
+#endif
+#define APOOL_NUM_CLASSES  (APOOL_MAX_BLOCK / APOOL_ALIGN)   /* 68 sizes by default: 16, 32, ... 1088 */
+_Static_assert(APOOL_NUM_CLASSES < 0xFFFF, "size classes must fit ApoolPage.cls");
 #ifndef APOOL_PAGE_SIZE
 #define APOOL_PAGE_SIZE    (16 * 1024)                       /* override with -DAPOOL_PAGE_SIZE=... to experiment */
 #endif
 #define APOOL_LIFETIMES    2                                 /* 0 = short-lived (default), 1 = long-lived */
 #define APOOL_BINS         4                                 /* fullness groups: <25%, <50%, <75%, <100% */
 #define APOOL_NONE         UINT32_MAX
-#define APOOL_FREE_PAGE    0xFF
+#define APOOL_FREE_PAGE    0xFFFF
 
 enum {
     APOOL_F_FULLEST = 1u << 0,
@@ -87,12 +90,13 @@ typedef struct {
     uint32_t bump;          /* offset of the next never-used block */
     uint16_t live;          /* blocks handed out */
     uint16_t capacity;      /* blocks of this size that fit */
-    uint8_t  cls;           /* owning size class, APOOL_FREE_PAGE when unowned */
-    uint8_t  last_cls;      /* previous owner, to count reshapes */
+    uint16_t cls;           /* owning size class, APOOL_FREE_PAGE when unowned (16 bits: a
+                               build with MAX_PAYLOAD above 4,016 has more than 255 sizes) */
+    uint16_t last_cls;      /* previous owner, to count reshapes */
     uint8_t  lt;            /* lifetime class */
     uint8_t  where;         /* list it is on: a fullness group, the free list, or none */
     uint8_t  purged;        /* physical memory was given back to the OS */
-    uint8_t  _pad[3];
+    uint8_t  _pad[1];
 } ApoolPage;
 
 _Static_assert(sizeof(ApoolPage) == 32, "ApoolPage must be 32 bytes");

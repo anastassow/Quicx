@@ -1,9 +1,17 @@
 CC = gcc
 CC_MAC = clang
 
+# The largest task payload: 1,024 bytes by default. `make MAX_PAYLOAD=8192`
+# builds a daemon for bigger tasks (a multiple of 16, at most 16,320, so that
+# a 64-byte record plus the payload still fits a 16 KiB page).
+MAX_PAYLOAD ?= 1024
+DAEMON_OUT ?= quicxd
+
 CFLAGS_COMMON = -std=c17 \
          -D_GNU_SOURCE \
-         -Iquicx/include
+         -Iquicx/include \
+         -DPROTOCOL_MAX_PAYLOAD=$(MAX_PAYLOAD) \
+         -DAPOOL_MAX_BLOCK=$(shell expr $(MAX_PAYLOAD) + 64)
 
 CFLAGS_DEBUG = -g
 
@@ -42,13 +50,13 @@ bench: bench_apool bench_purge
 
 # the targets list no header or source dependencies, so they are phony:
 # every `make` rebuilds them and a source change can never leave a stale binary
-.PHONY: all bench test e2e release clean dsym_remove \
+.PHONY: all bench test e2e check-big quicxd-8k release clean dsym_remove \
         quicxd test_apool test_config test_wire test_admission bench_apool bench_purge
 
 quicxd:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
 	quicx/src/main.c $(QUICX_CORE) \
-	-o $@ -lpthread
+	-o $(DAEMON_OUT) -lpthread
 
 test_apool:
 	$(CC) $(CFLAGS_COMMON) $(CFLAGS_DEBUG) \
@@ -96,6 +104,13 @@ test: test_apool test_config test_wire test_admission
 e2e: quicxd
 	python3 docs/report/scripts/e2e_tests.py ./quicxd 16391
 
+# a daemon for payloads up to 8 KiB, checked against the capacity formula
+quicxd-8k:
+	$(MAKE) --no-print-directory quicxd MAX_PAYLOAD=8192 DAEMON_OUT=quicxd-8k
+
+check-big: quicxd-8k
+	python3 docs/report/scripts/big_payload_check.py ./quicxd-8k 8192
+
 # release binaries are stripped: a download carries no debug info
 VERSION ?= dev
 
@@ -133,7 +148,7 @@ release: release_dir linux_x86 linux_arm mac_x86 mac_arm
 	@echo "✓ Release v$(VERSION) built in $(OUT_DIR)"
 
 clean:
-	rm -f quicxd test_apool test_config test_wire test_admission bench_apool bench_purge
+	rm -f quicxd quicxd-8k test_apool test_config test_wire test_admission bench_apool bench_purge
 	rm -rf $(RELEASE_DIR)
 
 dsym_remove:
