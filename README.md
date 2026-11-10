@@ -185,7 +185,7 @@ The orange path in the diagram, in order:
 
 Connections and workers live in a separate control pool of 3 pages. A queue full of tasks can't touch that memory, so a worker can always connect and start draining it.
 
-The source is about 2,800 lines in `quicx/src`:
+The daemon is about 3,200 lines of C in `quicx/src` and `quicx/include` (2,183 without blank lines and comments):
 
 - `event_loop.c` waits on every socket with kqueue or epoll, in one thread
 - `protocol.c` reads and writes QXP frames
