@@ -11,6 +11,11 @@ protector aborted the process.
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
 #include <arpa/inet.h>
 
 #include "protocol.h"
@@ -120,13 +125,130 @@ static void test_back_to_back_tasks(void) {
     close(fds[0]);
 }
 
+static void sleep_ms(int ms) {
+    struct timespec ts = { ms / 1000, (long)(ms % 1000) * 1000000L };
+    nanosleep(&ts, NULL);
+}
+
+static double now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
+}
+
+/*
+The daemon's sockets are non-blocking. A frame split across two TCP
+segments made read() fail with EAGAIN halfway through, and the daemon
+closed the connection (seen with pipelined submits through Docker's
+network). The rest of the frame must be waited for.
+*/
+static void test_read_split_frame(void) {
+    printf("\n--- a frame that arrives in two pieces, 80 ms apart ---\n");
+    int sv[2];
+    socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
+    fcntl(sv[0], F_SETFL, fcntl(sv[0], F_GETFL, 0) | O_NONBLOCK);
+
+    uint8_t frame[64];
+    for (int i = 0; i < 64; i++) frame[i] = (uint8_t)i;
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        close(sv[0]);
+        if (write(sv[1], frame, 5) != 5) _exit(1);
+        sleep_ms(80);
+        if (write(sv[1], frame + 5, 59) != 59) _exit(1);
+        sleep_ms(200);
+        _exit(0);
+    }
+    close(sv[1]);
+
+    uint8_t got[64] = {0};
+    int r = protocol_read_exact(sv[0], got, 64);
+    waitpid(pid, NULL, 0);
+
+    check("all 64 bytes read across the gap", r == 64);
+    check("bytes intact and in order",        memcmp(got, frame, 64) == 0);
+    close(sv[0]);
+}
+
+/* a peer that stops in the middle of a frame is dropped, not waited on forever */
+static void test_read_stalled_peer(void) {
+    printf("\n--- a peer that stops halfway through a frame ---\n");
+    int sv[2];
+    socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
+    fcntl(sv[0], F_SETFL, fcntl(sv[0], F_GETFL, 0) | O_NONBLOCK);
+
+    if (write(sv[1], "abc", 3) != 3) { check("setup write", 0); return; }
+
+    uint8_t got[16];
+    double  t0 = now_ms();
+    int     r  = protocol_read_exact(sv[0], got, 16);
+    double  waited = now_ms() - t0;
+
+    check("read gives up with an error", r < 0);
+    check("after about the timeout",     waited >= PROTOCOL_IO_TIMEOUT_MS * 0.9 && waited < PROTOCOL_IO_TIMEOUT_MS * 3);
+    close(sv[0]);
+    close(sv[1]);
+}
+
+/* replies keep their framing when the peer's receive buffer is full for a while */
+static void test_write_when_buffer_full(void) {
+    printf("\n--- writing while the peer is not reading yet ---\n");
+    int sv[2];
+    socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
+    int small = 4096;
+    setsockopt(sv[1], SOL_SOCKET, SO_SNDBUF, &small, sizeof(small));
+    setsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &small, sizeof(small));
+    fcntl(sv[1], F_SETFL, fcntl(sv[1], F_GETFL, 0) | O_NONBLOCK);
+
+    /* fill the pipe until the kernel says it would block */
+    uint8_t junk[512];
+    memset(junk, 0xAB, sizeof(junk));
+    int filled = 0;
+    for (;;) {
+        ssize_t w = write(sv[1], junk, sizeof(junk));
+        if (w <= 0) break;
+        filled += (int)w;
+    }
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        close(sv[1]);
+        sleep_ms(80);   /* the reader shows up late */
+        uint8_t buf[1 << 16];
+        int total = 0;
+        for (;;) {
+            ssize_t r = read(sv[0], buf + total, sizeof(buf) - (size_t)total);
+            if (r <= 0) break;
+            total += (int)r;
+        }
+        /* the frame sits right after the junk: header + 4-byte id */
+        int ok = total == filled + PROTOCOL_HEADER_SIZE + 4
+              && buf[filled] == PROTOCOL_VERSION && buf[filled + 1] == MSG_OK;
+        _exit(ok ? 0 : 2);
+    }
+    close(sv[0]);
+
+    int r = protocol_send_ok(sv[1], 42);
+    close(sv[1]);
+    int status = 0;
+    waitpid(pid, &status, 0);
+
+    check("send waits instead of failing", r == 0);
+    check("peer gets the whole frame",     WIFEXITED(status) && WEXITSTATUS(status) == 0);
+}
+
 int main(void) {
     printf("=== wire tests ===\n");
+    signal(SIGPIPE, SIG_IGN);
 
     test_task_with_payload(13);
     test_task_with_payload(PROTOCOL_MAX_PAYLOAD - 4 - 1 - 12);
     test_submit_with_payload();
     test_back_to_back_tasks();
+    test_read_split_frame();
+    test_read_stalled_peer();
+    test_write_when_buffer_full();
 
     printf("\n=== results ===\npassed: %d\nfailed: %d\n", passed, failed);
     return failed == 0 ? 0 : 1;

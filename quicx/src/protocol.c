@@ -2,18 +2,43 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <poll.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
+
+/*
+Client sockets are non-blocking, and a frame can arrive split across
+TCP segments (pipelined submits, a real network, Docker's proxy). A read
+or write that would block is not an error: wait for the socket, up to
+PROTOCOL_IO_TIMEOUT_MS, for the rest of a frame the peer has started.
+Before this, EAGAIN in the middle of a frame closed the connection.
+*/
+static int wait_for(int fd, short events) {
+    struct pollfd p = { .fd = fd, .events = events, .revents = 0 };
+    int r;
+    do {
+        r = poll(&p, 1, PROTOCOL_IO_TIMEOUT_MS);
+    } while (r < 0 && errno == EINTR);
+    return r > 0 ? 0 : -1;   /* -1: timed out or failed */
+}
 
 int protocol_read_exact(int fd, void* buf, int n) {
     int total = 0;
     uint8_t* ptr = (uint8_t*)buf;
 
     while (total < n) {
-        int r = read(fd, ptr + total, n - total);
+        ssize_t r = read(fd, ptr + total, (size_t)(n - total));
         if (r == 0) return 0;
-        if (r < 0) return -1;
-        total += r;
+        if (r < 0) {
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (wait_for(fd, POLLIN) < 0) return -1;
+                continue;
+            }
+            return -1;
+        }
+        total += (int)r;
     }
     return total;
 }
@@ -53,7 +78,15 @@ static int send_frame_v(int fd, MessageType type, const struct iovec* parts, int
     ssize_t sent = 0;
     while (sent < expected) {
         ssize_t n = writev(fd, iov, iov_count);
-        if (n <= 0) return -1;
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (wait_for(fd, POLLOUT) < 0) return -1;
+                continue;
+            }
+            return -1;
+        }
+        if (n == 0) return -1;
         sent += n;
 
         if (sent < expected) {

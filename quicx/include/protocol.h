@@ -12,6 +12,9 @@ PROTOCOL_MAX_PAYLOAD bytes.
 #define PROTOCOL_VERSION        1
 #define PROTOCOL_HEADER_SIZE    6
 #define PROTOCOL_MAX_PAYLOAD    1024
+
+/* how long a peer may take to deliver the rest of a frame it has started */
+#define PROTOCOL_IO_TIMEOUT_MS 1000
 #define PROTOCOL_MAX_TYPE_LEN   32
 #define PROTOCOL_HEARTBEAT_MS   5000
 #define PROTOCOL_TIMEOUT_MS     15000
