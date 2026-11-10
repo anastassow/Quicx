@@ -12,7 +12,12 @@ front: the task's value level, 0..15 (15 = critical, never evicted).
 /* values for the protocol */
 #define PROTOCOL_VERSION        1
 #define PROTOCOL_HEADER_SIZE    6
+/* The largest payload: 1,024 bytes unless the daemon is built with
+   `make MAX_PAYLOAD=N` (a multiple of 16, at most 16,320, so that one task
+   still fits a 16 KiB page). */
+#ifndef PROTOCOL_MAX_PAYLOAD
 #define PROTOCOL_MAX_PAYLOAD    1024
+#endif
 
 /* how long a peer may take to deliver the rest of a frame it has started */
 #define PROTOCOL_IO_TIMEOUT_MS 1000

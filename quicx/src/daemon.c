@@ -99,11 +99,12 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
             for (int c = 0; c < APOOL_NUM_CLASSES; c++) {
                 const ApoolClass* k = &mem->classes[c];
                 if (k->pages == 0) continue;
+                owned_pages += k->pages;
+                if (n == 255) continue;   /* class_count is one byte; a big MAX_PAYLOAD build can have more sizes in use */
                 uint32_t per_page = (uint32_t)(APOOL_PAGE_SIZE / apool_class_size(c));
                 sc[n].block_size       = htonl((uint32_t)apool_class_size(c));
                 sc[n].total_blocks     = htonl(k->pages * per_page);
                 sc[n].allocated_blocks = htonl((uint32_t)k->live);
-                owned_pages += k->pages;
                 n++;
             }
 

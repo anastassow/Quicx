@@ -66,3 +66,4 @@ dkms.conf
 
 # macOS
 .DS_Store
+/quicxd-8k
