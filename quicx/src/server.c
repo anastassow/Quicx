@@ -3,6 +3,8 @@
 #include "protocol.h"
 #include "daemon.h"
 #include "apool.h"
+#include "cli.h"
+#include "admission.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +16,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define UNIX_SOCKET_PATH "/tmp/quicx.sock"
 
 /* functions for the sockets */
 
@@ -137,7 +138,20 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
     msg.version = hdr.version;
     msg.type    = (MessageType)hdr.type;
 
-    if (msg.type == MSG_SUBMIT) {
+    if (msg.type == MSG_SUBMIT || msg.type == MSG_SUBMIT_VALUED) {
+        /* a valued SUBMIT carries its level first; the rest is a plain SUBMIT body */
+        uint8_t level = QUEUE_LEVEL_DEFAULT;
+        if (msg.type == MSG_SUBMIT_VALUED) {
+            if (payload_len < 1) goto parse_error_nobuf;
+            if (protocol_read_exact(conn->fd, &level, 1) <= 0) {
+                conn_close(loop_fd, conn, quicx);
+                return;
+            }
+            if (level >= QUEUE_LEVELS) goto parse_error_nobuf;
+            payload_len -= 1;
+            msg.type = MSG_SUBMIT;
+        }
+
         uint8_t  type_len_byte;
         uint32_t len_prefix_size = (uint32_t)sizeof(type_len_byte);
 
@@ -166,6 +180,11 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         it. one allocation, one free, and a single point of refusal
         */
         Task* task = (Task*)apool_alloc(&quicx->mem, sizeof(Task) + real_len);
+
+        /* full: a waiting task may make room, if admission allows and its memory fits */
+        if (!task && admission_make_room(quicx, sizeof(Task) + real_len, level))
+            task = (Task*)apool_alloc(&quicx->mem, sizeof(Task) + real_len);
+
         if (!task) {
             /*
             the payload bytes are still on the socket. read them off and
@@ -192,6 +211,7 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         msg.as.submit.block       = task;
         msg.as.submit.payload     = payload_buf;
         msg.as.submit.payload_len = real_len;
+        msg.as.submit.level       = level;
 
         daemon_handle_message(conn, &msg, quicx);
         return;
@@ -270,6 +290,10 @@ static void handle_new_unix_connection(int loop_fd, int unix_fd, Quicx* quicx) {
 
 int server_start(int port, Quicx* quicx) {
 
+    /* the CLI socket belongs to this port, so daemons on other ports keep theirs */
+    char cli_sock[108], pid_unused[108];
+    cli_runtime_paths(port, cli_sock, sizeof(cli_sock), pid_unused, sizeof(pid_unused));
+
     /* TCP socket */
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
@@ -310,9 +334,9 @@ int server_start(int port, Quicx* quicx) {
         struct sockaddr_un un;
         memset(&un, 0, sizeof(un));
         un.sun_family = AF_UNIX;
-        strncpy(un.sun_path, UNIX_SOCKET_PATH,
+        strncpy(un.sun_path, cli_sock,
                 sizeof(un.sun_path) - 1);
-        unlink(UNIX_SOCKET_PATH);
+        unlink(cli_sock);
 
         if (bind(unix_fd, (struct sockaddr*)&un, sizeof(un)) < 0) {
             perror("unix bind");
@@ -320,7 +344,7 @@ int server_start(int port, Quicx* quicx) {
             unix_fd = -1;
         } else {
             listen(unix_fd, 16);
-            printf("quicx cli socket: %s\n", UNIX_SOCKET_PATH);
+            printf("quicx cli socket: %s\n", cli_sock);
         }
     }
 
@@ -375,7 +399,7 @@ int server_start(int port, Quicx* quicx) {
     close(server_fd);
     if (unix_fd >= 0) {
         close(unix_fd);
-        unlink(UNIX_SOCKET_PATH);
+        unlink(cli_sock);
     }
     return 0;
 }

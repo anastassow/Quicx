@@ -5,7 +5,8 @@
 QXP, the Quicx Protocol: the binary format producers, workers and the CLI
 use to talk to quicxd. Every message is a 6-byte header (version, type,
 length of the body) followed by the body; a payload is at most
-PROTOCOL_MAX_PAYLOAD bytes.
+PROTOCOL_MAX_PAYLOAD bytes. MSG_SUBMIT_VALUED is a SUBMIT with one byte in
+front: the task's value level, 0..15 (15 = critical, never evicted).
 */
 
 /* values for the protocol */
@@ -41,6 +42,7 @@ typedef enum {
     MSG_PONG            = 0x0A,
     MSG_STATS           = 0x0B,
     MSG_STATS_RESPONSE  = 0x0C,
+    MSG_SUBMIT_VALUED   = 0x0D,   /* [level][typeLen][type][payload]: a SUBMIT with a value level 0..15 */
 } MessageType;
 
 /* Protocol error codes */
@@ -71,6 +73,7 @@ typedef struct {
     void*    block;                             /* the task's block: Task record, payload right behind it */
     uint8_t* payload;                           /* points into block, NULL when there is no payload */
     uint32_t payload_len;                       /* the length of the payload */
+    uint8_t  level;                             /* value level; plain SUBMIT gets QUEUE_LEVEL_DEFAULT */
 } SubmitBody;
 
 /* struct for the body of the Ok message */

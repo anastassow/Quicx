@@ -22,6 +22,7 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
             t->next             = NULL;
             t->payload          = msg->as.submit.payload;
             t->payload_len      = msg->as.submit.payload_len;
+            t->level            = msg->as.submit.level;
 
             strncpy(t->type, msg->as.submit.task_type, MAX_TASK_TYPE_SIZE - 1);
             t->type[MAX_TASK_TYPE_SIZE - 1] = '\0';
@@ -55,7 +56,8 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
         case MSG_DONE: {
 
             if (conn->as.worker.worker) {
-                protocol_send_done(conn->as.worker.worker->current_fd, msg->as.done.task_id);
+                if (conn->as.worker.worker->current_fd >= 0)
+                    protocol_send_done(conn->as.worker.worker->current_fd, msg->as.done.task_id);
                 worker_set_idle(&quicx->pool, conn->as.worker.worker);
                 conn->as.worker.worker->current_fd = -1;
             }
@@ -68,7 +70,8 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
         case MSG_FAILED: {
 
             if (conn->as.worker.worker) {
-                protocol_send_failed(conn->as.worker.worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
+                if (conn->as.worker.worker->current_fd >= 0)
+                    protocol_send_failed(conn->as.worker.worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
                 conn->as.worker.worker->current_fd = -1;
                 worker_set_idle(&quicx->pool, conn->as.worker.worker);
             }
@@ -117,6 +120,7 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
             /* usable = all pages; used = pages currently given to some size */
             hdr.usable_bytes       = htonll((uint64_t)mem->num_pages * APOOL_PAGE_SIZE);
             hdr.used_bytes         = htonll((uint64_t)owned_pages * APOOL_PAGE_SIZE);
+            hdr.tasks_evicted      = htonll(s->tasks_evicted);
             hdr.class_count        = (uint8_t)n;
 
             protocol_send_stats_response(conn->fd,
@@ -137,7 +141,25 @@ void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
     }
 }
 
+/* a producer's connection closed: its fd may be reused by the next client */
+static void forget_producer(void* ctx, Task* t) {
+    int fd = *(const int*)ctx;
+    if (t->producer_fd == fd) t->producer_fd = -1;
+}
+
 void daemon_handle_disconnect(Connection* conn, Quicx* quicx) {
+
+    /*
+    results and eviction notices go to the producer's fd. once that fd is
+    closed the OS can hand the number to a new connection, so stop pointing
+    at it: from waiting tasks, and from workers running this producer's task
+    */
+    if (conn->type != CONN_CLI) {
+        int fd = conn->fd;
+        queue_for_each(&quicx->queue, forget_producer, &fd);
+        for (Worker* w = quicx->pool.busy_head; w; w = w->next)
+            if (w->current_fd == fd) w->current_fd = -1;
+    }
 
     if (conn->type == CONN_WORKER && conn->as.worker.worker) {
         worker_remove(&quicx->pool, &quicx->ctrl, conn->as.worker.worker);

@@ -10,6 +10,7 @@ typedef struct {
     uint64_t tasks_submitted;
     uint64_t tasks_completed;
     uint64_t tasks_failed;
+    uint64_t tasks_evicted;      /* waiting tasks dropped to make room for a more valuable one */
     time_t   start_time;
 } Stats;
 
@@ -30,10 +31,11 @@ typedef struct __attribute__((packed)) {
     uint64_t pool_size;          /* bytes requested from the OS */
     uint64_t usable_bytes;       /* pool bytes left after the metadata carve out */
     uint64_t used_bytes;         /* committed bytes — metadata + live blocks */
+    uint64_t tasks_evicted;      /* waiting tasks evicted by admission (2.0) */
     uint8_t  class_count;        /* classes count in PMAD */
 } StatsHeader;
 
-_Static_assert(sizeof(StatsHeader) == 73, "StatsHeader wire size changed");
+_Static_assert(sizeof(StatsHeader) == 81, "StatsHeader wire size changed");
 
 /* structure for information from PMAD */
 typedef struct __attribute__((packed)) {
@@ -53,5 +55,8 @@ void stats_task_completed(Stats* s);
 
 /* function for incrementing failed tasks */
 void stats_task_failed(Stats* s);
+
+/* function for counting a task evicted to make room */
+void stats_task_evicted(Stats* s);
 
 #endif

@@ -1,0 +1,1 @@
+daemons=1 total=10600 per=[10600] server_cpu%=[48.5]

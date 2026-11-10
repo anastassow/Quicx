@@ -333,6 +333,32 @@ ApoolStatus apool_free(Apool* p, void* ptr) {
     return APOOL_OK;
 }
 
+int apool_free_makes_room(const Apool* p, const void* victim, size_t size) {
+    if (size == 0 || size > APOOL_MAX_BLOCK) return 0;
+    const uint8_t* b = (const uint8_t*)victim;
+    if (!b || b < p->data) return 0;
+    size_t off = (size_t)(b - p->data);
+    if (off >= (size_t)p->num_pages * APOOL_PAGE_SIZE) return 0;
+
+    const ApoolPage* pg = &p->pages[off / APOOL_PAGE_SIZE];
+    if (pg->cls == APOOL_FREE_PAGE || pg->live == 0) return 0;
+
+    int c = (int)(ROUND_UP(size, APOOL_ALIGN) / APOOL_ALIGN) - 1;
+
+    /* a block of the same size, in a page apool_alloc searches (lifetime 0) */
+    if (pg->cls == (uint8_t)c && pg->lt == 0) return 1;
+
+    /* the last block of a page: the page goes back to the free list, and the
+       size may take it unless the reserve keeps it for a size that owns none */
+    if (pg->live == 1) {
+        uint32_t free_after = p->free_pages + 1;
+        int reserve_blocks = (p->flags & APOOL_F_RESERVE) && free_after <= p->reserve &&
+                             p->classes[c].pages > 0;
+        return !reserve_blocks;
+    }
+    return 0;
+}
+
 size_t apool_live_bytes(const Apool* p) {
     size_t total = 0;
     for (int c = 0; c < APOOL_NUM_CLASSES; c++)

@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include "pool_config.h"
+#include "admission.h"
 
 /* the [allocator] on/off keys and the apool feature each one switches */
 static const struct {
@@ -32,6 +33,7 @@ void pool_config_defaults(PoolConfig* pc) {
 #endif
     pc->warm_pages    = POOL_AUTO;
     pc->reserve_pages = POOL_AUTO;
+    pc->admission     = ADMISSION_DEFAULT;
 }
 
 /* on / off, yes / no, true / false, 1 / 0 */
@@ -109,6 +111,17 @@ PoolKeyResult pool_config_set(PoolConfig* pc, const char* key, const char* value
         return POOL_KEY_OK;
     }
 
+    if (strcmp(key, "admission") == 0) {
+        if      (strcmp(value, "refuse") == 0) pc->admission = ADMISSION_REFUSE;
+        else if (strcmp(value, "oldest") == 0) pc->admission = ADMISSION_OLDEST;
+        else if (strcmp(value, "value") == 0)  pc->admission = ADMISSION_VALUE;
+        else {
+            snprintf(err, errlen, "admission must be refuse, oldest or value, not '%s'", value);
+            return POOL_KEY_BAD;
+        }
+        return POOL_KEY_OK;
+    }
+
     uint32_t* pages = strcmp(key, "warm_pages") == 0    ? &pc->warm_pages
                     : strcmp(key, "reserve_pages") == 0 ? &pc->reserve_pages
                     : NULL;
@@ -161,5 +174,8 @@ void pool_config_describe(const PoolConfig* pc, char* out, size_t n) {
         if (!(pc->flags & SWITCHES[i].flag)) continue;
         used += (size_t)snprintf(out + used, n - used, "%s%s", used ? ", " : "", SWITCHES[i].name);
     }
-    if (used == 0) snprintf(out, n, "no optional features");
+    if (used == 0) used = (size_t)snprintf(out, n, "no optional features");
+    static const char* modes[] = { "refuse", "oldest", "value" };
+    if (used < n && pc->admission <= ADMISSION_VALUE)
+        snprintf(out + used, n - used, "; when full: %s", modes[pc->admission]);
 }

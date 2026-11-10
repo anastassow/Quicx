@@ -26,6 +26,7 @@ typedef struct {
     uint32_t flags;          /* APOOL_F_* */
     uint32_t warm_pages;     /* empty pages kept backed before purging; POOL_AUTO = 1/8 of the pages */
     uint32_t reserve_pages;  /* free pages only for sizes that own none; POOL_AUTO = 1/64 of the pages */
+    uint8_t  admission;      /* AdmissionMode: what a full budget does with a new task (admission.h) */
 } PoolConfig;
 
 /* what pool_config_set made of a key */
@@ -53,6 +54,7 @@ stores one key = value from the config file. keys:
   fullest_first  on / off
   warm_pages     auto, or a page count
   reserve_pages  auto, or a page count
+  admission      refuse, oldest or value (see admission.h)
 on POOL_KEY_BAD a one-line reason is written to err
 */
 PoolKeyResult pool_config_set(PoolConfig* pc, const char* key, const char* value,

@@ -1,0 +1,8 @@
+steady before  valuable done   945/ 2988 (31.6%)  wait p50 3506.1 ms p95 3506.1 ms  valuable refused 2043 evicted 0  ordinary done 8307 evicted 0  total done 9252
+steady refuse  valuable done   934/ 2988 (31.3%)  wait p50 4.1 ms p95 6.0 ms  valuable refused 2054 evicted 0  ordinary done 8316 evicted 0  total done 9250
+steady oldest  valuable done  2988/ 2988 (100.0%)  wait p50 4.1 ms p95 8.0 ms  valuable refused 0 evicted 0  ordinary done 6264 evicted 20748  total done 9252
+steady value   valuable done  2988/ 2988 (100.0%)  wait p50 4.1 ms p95 6.1 ms  valuable refused 0 evicted 0  ordinary done 6262 evicted 2066  total done 9250
+burst  before  valuable done  3000/ 3000 (100.0%)  wait p50 1501.1 ms p95 2852.0 ms  valuable refused 0 evicted 0  ordinary done 4753 evicted 0  total done 7753
+burst  refuse  valuable done  3000/ 3000 (100.0%)  wait p50 1503.1 ms p95 2854.0 ms  valuable refused 0 evicted 0  ordinary done 4752 evicted 0  total done 7752
+burst  oldest  valuable done  1938/ 3000 (64.6%)  wait p50 942.1 ms p95 1524.0 ms  valuable refused 0 evicted 1062  ordinary done 5813 evicted 12187  total done 7751
+burst  value   valuable done  3000/ 3000 (100.0%)  wait p50 1510.0 ms p95 2859.9 ms  valuable refused 0 evicted 0  ordinary done 4749 evicted 0  total done 7749

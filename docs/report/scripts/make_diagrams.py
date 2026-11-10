@@ -349,18 +349,18 @@ def quicx(pal):
            ["accepts connections,", "reads and checks frames"], key="server")
     c.tile(xs[1], Y, W, H, "workflow", "Daemon", "[daemon.c]",
            ["acts on every message:", "queue, reply, register"], key="daemon")
-    c.tile(xs[2], Y, W, H, "list-ordered", "Queue", "[queue.c · FIFO]", [], key="queue")
+    c.tile(xs[2], Y, W, H, "list-ordered", "Queue", "[queue.c · 16 levels]", [], key="queue")
     qy = Y + 92
-    for i, n in enumerate(("#41", "#42", "#43")):
+    for i, n in enumerate(("L12", "L8", "L4")):
         bx = xs[2] + 16 + i * 70
         c.rect(bx, qy, 52, 30, fill="accent_soft" if i == 0 else "well", stroke="accent" if i == 0 else "line",
                sw=1.4, rx=4)
         c.text(bx + 26, qy + 20, n, size=12.5, mono=True, color="text", anchor="middle")
         if i < 2:
             c.arrow([(bx + 52, qy + 15), (bx + 68, qy + 15)], sw=1.4)
-    c.text(xs[2] + 16, qy + 50, "tasks wait in order", size=14.5, within=c.boxes["queue"])
+    c.text(xs[2] + 16, qy + 50, "a FIFO per value level", size=14.5, within=c.boxes["queue"])
     c.tile(xs[3], Y, W, H, "send", "Dispatcher", "[dispacher.c]",
-           ["gives the oldest task", "to an idle worker"], key="disp")
+           ["highest level first,", "oldest within a level"], key="disp")
 
     # ---- second row: state the daemon keeps
     c.tile(700, 620, 150, 110, "chart-column", "Stats", "[stats.c]", ["counters"], key="stats", desc_y=702)
