@@ -15,7 +15,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 
 A queue that grows with its backlog is fine on a machine of its own. Next to the application it serves, on a small VM or in a container with a memory limit, the two end up fighting over the same memory. With Quicx you decide up front how much memory the queue may have, and it stays inside that number even when producers outrun the workers.
 
-It is one C17 binary with no dependencies: 32 KB on Linux arm64 (a Raspberry Pi), 35 KB on Linux x86-64, 43 KB and 72 KB on Intel and Apple-silicon Macs. It runs on macOS (kqueue) and Linux (epoll). Clients talk to it over QXP, the Quicx Protocol, a small binary protocol I designed for Quicx: 12 message types behind a 6-byte header. There is a Java client, and any other language can speak QXP directly. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
+It is one C17 binary with no dependencies: 32 KB on Linux arm64 (a Raspberry Pi), 35 KB on Linux x86-64, 43 KB and 72 KB on Intel and Apple-silicon Macs. It runs on macOS (kqueue) and Linux (epoll). Clients talk to it over QXP, the Quicx Protocol, a small binary protocol I designed for Quicx: 13 message types behind a 6-byte header. There is a Java client, and any other language can speak QXP directly. Delivery is at-most-once and nothing is written to disk; see [what Quicx does not do](#what-quicx-does-not-do).
 
 ## How a task moves through the daemon
 
@@ -127,6 +127,25 @@ Given the same limit, Redis holds more:
 
 A Redis list keeps a 100-byte item in about 103 bytes. Quicx keeps each task in a 176-byte block: the payload plus a 64-byte record with the task's id, its type and the connection its result goes back to. Both refuse new work once full and keep running. The difference is what the limit means. `maxmemory` counts Redis's data, not the process: set to 56 MiB, Redis peaked at 63.7 MiB, 0.3 MiB short of being killed by the container. Quicx's budget is all of its task memory, so 56 MiB came to 59.3 MiB with the program itself. A smaller task record is the obvious next step.
 
+## When the budget is full: keep the most valuable work
+
+A queue that is out of memory has to drop something. Quicx 2.0 refuses the newest task; a leaky queue, such as GStreamer's, drops the oldest. Both ignore what the work is worth. With `admission = value`, a producer gives each task a value level from 0 to 15 (`MSG_SUBMIT_VALUED`), and the queue spends its budget on the most valuable tasks: higher levels are dispatched first, and when the budget is full a waiting task of a lower level makes room for a new one. Level 15 is never evicted, so a critical message cannot bounce off a queue full of camera frames. The evicted task's producer gets `MSG_FAILED` with the reason `evicted`.
+
+What no general-purpose allocator can tell a queue is which waiting task, if freed, would let the new one in. apool can: a task is evicted only when `apool_free_makes_room` proves its memory fits the new task, either a block of the same size or the last block of a page that the new size is allowed to take. A task is never thrown away for nothing. Plain `MSG_SUBMIT` tasks all get level 8, so for clients that send no values `value` behaves exactly like `refuse`.
+
+Measured with the real daemon: a 256 KiB budget (1,752 tasks), one worker taking 2 ms per task, median of 3 runs ([script](docs/report/scripts/admission/bench_admission.py), [raw results](docs/report/results/admission)). In the steady run 2,000 tasks a second arrive for 15 s and one in ten, chosen at random, is valuable. In the burst run valuable tasks arrive at 1,000 a second for 3 s, then ordinary ones at 2,000 a second for 9 s.
+
+| | steady: valuable tasks done | steady: wait of a valuable task | steady: tasks evicted | burst: valuable tasks done |
+|---|---:|---:|---:|---:|
+| 2.0 without values | 31.6 % | 3,506 ms | 0 | 100 % |
+| values, `admission = refuse` | 31.2 % | 4.1 ms | 0 | 100 % |
+| values, `admission = oldest` | 100 % | 4.1 ms | 20,749 | 64.6 % |
+| values, `admission = value` | **100 %** | **4.1 ms** | **2,056** | **100 %** |
+
+Without values, a valuable task is as likely to be refused as any other and waits behind the whole queue. Dropping the oldest keeps every valuable task in the steady run but evicts ten times as many tasks, and in the burst the flood of ordinary work pushes out 1,062 valuable tasks that were still waiting. Only `value` keeps every valuable task in both runs. Every configuration completes the same number of tasks (about 9,250 and 7,750), so the choice costs no throughput.
+
+Dropping low-value work under overload is known from stream processing (semantic load shedding in Aurora, 2003), and evicting by value per byte from web caches (GreedyDual-Size, 1997); brokers such as RabbitMQ drop the oldest or refuse the newest. What is new here is eviction that is exact about memory: the queue knows, from the allocator, that each eviction makes room. `make test` runs 26 checks of these rules (`test_admission`).
+
 ## Install and run
 
 ```sh
@@ -213,6 +232,7 @@ purge         = on      # give the memory of empty pages back after a burst
 fullest_first = off     # no gain on queue traffic
 warm_pages    = auto    # empty pages kept before purging (1/8 of the pages)
 reserve_pages = auto    # pages held back by the reserve (1/64 of the pages)
+admission     = value   # when full: refuse, oldest or value (see below)
 ```
 
 A misspelled key or a value that can't be used stops Quicx before it starts, with the file and line, for example `quicx.conf:14: purge must be on or off, not 'sometimes'`. `--port` on the command line overrides the file. Config files from 1.x still load; their `class` lines are ignored.
@@ -235,7 +255,7 @@ The default port keeps `/tmp/quicx.sock` and `/tmp/quicx.pid`; any other port us
 
 - Nothing is persisted. A restart empties the queue.
 - There is no redelivery. A task is freed as it is sent, so if the worker dies, the task is gone.
-- No retries, priorities or delayed tasks, and only one queue (a FIFO).
+- No retries or delayed tasks, and one queue: a FIFO per value level, higher levels first.
 - Payloads over 1,024 bytes are refused with `ERROR 0x03`.
 - It uses one core. To scale out, run several daemons behind a TCP load balancer.
 
@@ -247,7 +267,7 @@ A C17 compiler and `make` are enough.
 
 ```sh
 make            # the daemon and the unit tests
-make test       # test_apool (50 checks), test_config (40), test_wire (34)
+make test       # test_apool (50 checks), test_config (45), test_wire (34), test_admission (26)
 make e2e        # 27 end-to-end checks against ./quicxd, needs python3
 make bench      # bench_apool and bench_purge
 ```

@@ -1,0 +1,90 @@
+{
+ "steady/before": {
+  "valuable_done_pct": 31.6,
+  "valuable_wait_ms_p50": 3506.1,
+  "valuable_wait_ms_p95": 3507.6,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 0,
+  "valuable_refused": 2045,
+  "total_done": 9252,
+  "valuable_done": 943,
+  "valuable_submitted": 2988
+ },
+ "steady/refuse": {
+  "valuable_done_pct": 31.2,
+  "valuable_wait_ms_p50": 4.1,
+  "valuable_wait_ms_p95": 6.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 0,
+  "valuable_refused": 2057,
+  "total_done": 9250,
+  "valuable_done": 931,
+  "valuable_submitted": 2988
+ },
+ "steady/oldest": {
+  "valuable_done_pct": 100.0,
+  "valuable_wait_ms_p50": 4.1,
+  "valuable_wait_ms_p95": 8.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 20749,
+  "valuable_refused": 0,
+  "total_done": 9251,
+  "valuable_done": 2988,
+  "valuable_submitted": 2988
+ },
+ "steady/value": {
+  "valuable_done_pct": 100.0,
+  "valuable_wait_ms_p50": 4.1,
+  "valuable_wait_ms_p95": 8.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 2056,
+  "valuable_refused": 0,
+  "total_done": 9251,
+  "valuable_done": 2988,
+  "valuable_submitted": 2988
+ },
+ "burst/before": {
+  "valuable_done_pct": 100.0,
+  "valuable_wait_ms_p50": 1501.1,
+  "valuable_wait_ms_p95": 2852.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 0,
+  "valuable_refused": 0,
+  "total_done": 7753,
+  "valuable_done": 3000,
+  "valuable_submitted": 3000
+ },
+ "burst/refuse": {
+  "valuable_done_pct": 100.0,
+  "valuable_wait_ms_p50": 1503.1,
+  "valuable_wait_ms_p95": 2854.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 0,
+  "valuable_refused": 0,
+  "total_done": 7752,
+  "valuable_done": 3000,
+  "valuable_submitted": 3000
+ },
+ "burst/oldest": {
+  "valuable_done_pct": 64.6,
+  "valuable_wait_ms_p50": 941.1,
+  "valuable_wait_ms_p95": 1522.2,
+  "valuable_evicted": 1062,
+  "ordinary_evicted": 12186,
+  "valuable_refused": 0,
+  "total_done": 7752,
+  "valuable_done": 1938,
+  "valuable_submitted": 3000
+ },
+ "burst/value": {
+  "valuable_done_pct": 100.0,
+  "valuable_wait_ms_p50": 1503.1,
+  "valuable_wait_ms_p95": 2854.0,
+  "valuable_evicted": 0,
+  "ordinary_evicted": 0,
+  "valuable_refused": 0,
+  "total_done": 7751,
+  "valuable_done": 3000,
+  "valuable_submitted": 3000
+ }
+}

@@ -5,7 +5,8 @@
 QXP, the Quicx Protocol: the binary format producers, workers and the CLI
 use to talk to quicxd. Every message is a 6-byte header (version, type,
 length of the body) followed by the body; a payload is at most
-PROTOCOL_MAX_PAYLOAD bytes.
+PROTOCOL_MAX_PAYLOAD bytes. MSG_SUBMIT_VALUED is a SUBMIT with one byte in
+front: the task's value level, 0..15 (15 = critical, never evicted).
 */
 
 /* values for the protocol */
