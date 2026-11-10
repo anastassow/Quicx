@@ -41,6 +41,7 @@ typedef enum {
     MSG_PONG            = 0x0A,
     MSG_STATS           = 0x0B,
     MSG_STATS_RESPONSE  = 0x0C,
+    MSG_SUBMIT_VALUED   = 0x0D,   /* [level][typeLen][type][payload]: a SUBMIT with a value level 0..15 */
 } MessageType;
 
 /* Protocol error codes */
@@ -71,6 +72,7 @@ typedef struct {
     void*    block;                             /* the task's block: Task record, payload right behind it */
     uint8_t* payload;                           /* points into block, NULL when there is no payload */
     uint32_t payload_len;                       /* the length of the payload */
+    uint8_t  level;                             /* value level; plain SUBMIT gets QUEUE_LEVEL_DEFAULT */
 } SubmitBody;
 
 /* struct for the body of the Ok message */

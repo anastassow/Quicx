@@ -26,12 +26,13 @@ memory is two adaptive pools carved from the one configured budget
   and no worker could ever register again.
 - mem holds Tasks and payloads: everything else in the budget.
 */
-typedef struct {
+typedef struct Quicx {
     Apool       ctrl;
     Apool       mem;
     Queue       queue;
     WorkerPool  pool;
     Stats       stats;
+    uint8_t     admission;   /* AdmissionMode, from [allocator] admission */
 } Quicx;
 
 /* initializes mem/queue/pool/stats; cfg is only read, never retained */

@@ -136,6 +136,16 @@ ApoolStatus apool_init(Apool* p, size_t pool_size);
 /* unmaps the pool */
 void apool_destroy(Apool* p);
 
+/*
+answers, without changing anything: if the live block `victim` were freed now,
+would an apool_alloc of `size` (lifetime 0) then succeed? Exact for this pool's
+rules: true when the victim's page serves the same size, or when the victim is
+the last live block of its page and the reserve would let that size take the
+emptied page. The caller can evict a waiting task knowing the memory it frees
+is memory the new request can use.
+*/
+int apool_free_makes_room(const Apool* p, const void* victim, size_t size);
+
 /* returns a block of at least size bytes (16-byte aligned), or NULL */
 void* apool_alloc(Apool* p, size_t size);
 

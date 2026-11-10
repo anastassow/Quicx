@@ -4,6 +4,7 @@
 #include "daemon.h"
 #include "apool.h"
 #include "cli.h"
+#include "admission.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -137,7 +138,20 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
     msg.version = hdr.version;
     msg.type    = (MessageType)hdr.type;
 
-    if (msg.type == MSG_SUBMIT) {
+    if (msg.type == MSG_SUBMIT || msg.type == MSG_SUBMIT_VALUED) {
+        /* a valued SUBMIT carries its level first; the rest is a plain SUBMIT body */
+        uint8_t level = QUEUE_LEVEL_DEFAULT;
+        if (msg.type == MSG_SUBMIT_VALUED) {
+            if (payload_len < 1) goto parse_error_nobuf;
+            if (protocol_read_exact(conn->fd, &level, 1) <= 0) {
+                conn_close(loop_fd, conn, quicx);
+                return;
+            }
+            if (level >= QUEUE_LEVELS) goto parse_error_nobuf;
+            payload_len -= 1;
+            msg.type = MSG_SUBMIT;
+        }
+
         uint8_t  type_len_byte;
         uint32_t len_prefix_size = (uint32_t)sizeof(type_len_byte);
 
@@ -166,6 +180,11 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         it. one allocation, one free, and a single point of refusal
         */
         Task* task = (Task*)apool_alloc(&quicx->mem, sizeof(Task) + real_len);
+
+        /* full: a waiting task may make room, if admission allows and its memory fits */
+        if (!task && admission_make_room(quicx, sizeof(Task) + real_len, level))
+            task = (Task*)apool_alloc(&quicx->mem, sizeof(Task) + real_len);
+
         if (!task) {
             /*
             the payload bytes are still on the socket. read them off and
@@ -192,6 +211,7 @@ static void handle_readable(int loop_fd, Connection* conn, Quicx* quicx) {
         msg.as.submit.block       = task;
         msg.as.submit.payload     = payload_buf;
         msg.as.submit.payload_len = real_len;
+        msg.as.submit.level       = level;
 
         daemon_handle_message(conn, &msg, quicx);
         return;

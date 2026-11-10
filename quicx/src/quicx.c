@@ -32,6 +32,7 @@ ApoolStatus quicx_init(Quicx* quicx, const Config* cfg) {
     queue_init(&quicx->queue);
     workers_init(&quicx->pool);
     stats_init(&quicx->stats);
+    quicx->admission = cfg->pool.admission;
 
     return APOOL_OK;
 }

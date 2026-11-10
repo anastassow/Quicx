@@ -29,7 +29,8 @@ QUICX_CORE = quicx/src/queue.c \
              quicx/src/config.c \
              quicx/src/pool_config.c \
              quicx/src/quicx.c \
-             quicx/src/apool.c
+             quicx/src/apool.c \
+             quicx/src/admission.c
 
 # make          the daemon and its tests
 # make test     run the unit tests

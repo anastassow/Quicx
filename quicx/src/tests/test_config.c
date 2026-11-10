@@ -71,7 +71,9 @@ static void test_defaults(void) {
     check("warm and reserve pages automatic", c.pool.warm_pages == POOL_AUTO && c.pool.reserve_pages == POOL_AUTO);
     char d[96];
     pool_config_describe(&c.pool, d, sizeof(d));
-    check("described as 'reserve, hardening, purge'", strcmp(d, "reserve, hardening, purge") == 0);
+    check("described as 'reserve, hardening, purge; when full: value'",
+          strcmp(d, "reserve, hardening, purge; when full: value") == 0);
+    check("admission defaults to value", pc.admission == ADMISSION_VALUE);
 }
 
 static void test_values(void) {
@@ -91,6 +93,10 @@ static void test_values(void) {
     check("purge false",          set(&pc, "purge", "false") == POOL_KEY_OK && !(pc.flags & APOOL_F_PURGE));
     check("fullest_first 1",      set(&pc, "fullest_first", "1") == POOL_KEY_OK && (pc.flags & APOOL_F_FULLEST));
     check("purge maybe refused",  set(&pc, "purge", "maybe") == POOL_KEY_BAD);
+    check("admission refuse", set(&pc, "admission", "refuse") == POOL_KEY_OK && pc.admission == ADMISSION_REFUSE);
+    check("admission oldest", set(&pc, "admission", "oldest") == POOL_KEY_OK && pc.admission == ADMISSION_OLDEST);
+    check("admission value",  set(&pc, "admission", "value")  == POOL_KEY_OK && pc.admission == ADMISSION_VALUE);
+    check("admission newest refused", set(&pc, "admission", "newest") == POOL_KEY_BAD);
 
     check("warm_pages 100",       set(&pc, "warm_pages", "100") == POOL_KEY_OK && pc.warm_pages == 100);
     check("warm_pages auto",      set(&pc, "warm_pages", "auto") == POOL_KEY_OK && pc.warm_pages == POOL_AUTO);

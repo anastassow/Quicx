@@ -142,13 +142,14 @@ void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
     uint64_t pool_size  = ntohll(hdr->pool_size);
     uint64_t usable     = ntohll(hdr->usable_bytes);
     uint64_t used       = ntohll(hdr->used_bytes);
+    uint64_t evicted    = ntohll(hdr->tasks_evicted);
 
     /*
     a task is in flight from the MSG_SUBMIT ack until a worker reports it
     done or failed, so it is either queued or held by a busy worker. signed
     because the counters can disagree if a task went missing.
     */
-    int64_t in_flight = (int64_t)submitted - (int64_t)completed - (int64_t)failed;
+    int64_t in_flight = (int64_t)submitted - (int64_t)completed - (int64_t)failed - (int64_t)evicted;
 
     char nbuf[32], b1[32], b2[32];
 
@@ -170,6 +171,10 @@ void cli_print_stats(const char* version, int pid, StatsHeader* hdr,
     fmt_count(nbuf, sizeof(nbuf), failed);
     printf("            failed     %10s%*s%5.1f%%\n",
            nbuf, BAR_WIDTH + 6, "", pct_of(failed, submitted));
+
+    fmt_count(nbuf, sizeof(nbuf), evicted);
+    printf("            evicted    %10s%*s%5.1f%%   for more valuable tasks\n",
+           nbuf, BAR_WIDTH + 6, "", pct_of(evicted, submitted));
 
     fmt_count(nbuf, sizeof(nbuf), in_flight < 0 ? 0 : (uint64_t)in_flight);
     printf("            in flight  %10s   = %u queued + %u running\n",
