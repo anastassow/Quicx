@@ -271,12 +271,14 @@ The next improvement of eviction is machine learning: Quicx learning what a task
 
 ## Using it from code
 
-With the Java client, `dev.quicx:quicx-client` (Maven Central):
+With the Java client, `dev.quicx:quicx-client` ([source](https://github.com/Quicx-Engine/Quicx-Java), Maven Central):
 
 ```java
 // producer
 try (QuicxClient client = new QuicxClient("localhost", 16381)) {
     int taskId = client.submit("send_email", "{\"to\":\"user@example.com\"}");
+    client.submit("frame", "/cam/0/000124.jpg", 12);          // a value level, client and quicxd 2.1.0
+    client.submit("stop", "", QuicxClient.CRITICAL_LEVEL);    // never evicted
 }
 
 // worker
@@ -285,7 +287,7 @@ new QuicxWorker("localhost", 16381)
     .start();
 ```
 
-The Java client sends plain SUBMIT; value levels need QXP directly for now. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body; a payload is at most 1,024 bytes unless the daemon was built with a larger `MAX_PAYLOAD`. A valued task from Python:
+`TaskResult.isEvicted()` tells a producer its task was evicted for a more valuable one. From other languages, speak QXP directly. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body; a payload is at most 1,024 bytes unless the daemon was built with a larger `MAX_PAYLOAD`. A valued task from Python:
 
 ```python
 import socket, struct
