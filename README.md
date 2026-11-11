@@ -7,7 +7,7 @@
 
 Quicx is a task queue for devices and servers with little memory. Producers send it tasks over TCP, workers take them one at a time, and the producer hears back when a task is done. It is given one memory budget when it starts and never goes past it. When the budget is full, it keeps the most valuable work: a new task can push out a waiting task of lower value, but only when Quicx's own allocator proves that the freed memory will hold the new task. As far as I could find, no other task queue does this.
 
-Because every task takes a known amount of memory, the capacity of a budget can be worked out before the device leaves the desk. Each daemon is a single thread with nothing shared, so one daemon per core gives isolation and adds throughput: two daemons on two cores did 1.92 times the work of one. The whole program is 32 KB on a Raspberry Pi, with no dependencies.
+Because every task takes a known amount of memory, the capacity of a budget can be worked out before the device leaves the desk. Each daemon is a single thread with nothing shared, so one daemon per core gives isolation and adds throughput: two daemons on two cores did 1.92 times the work of one. The whole program is 36 KB on a Raspberry Pi, with no dependencies.
 
 Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https://quicx.dev/docs). Every number on this page comes from a script in this repository; [`docs/README.md`](docs/README.md) lists which one.
 
@@ -38,7 +38,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 | Capacity is known in advance | the formula below gave exactly the measured count in every test (46,593 tasks of 100 B in 8 MiB) |
 | Daemons isolate the parts of a device and scale by core | 2 daemons on 2 cores: 35,000 tasks/s against 18,200 for one; filling one of ten daemons left the other nine untouched |
 | Bigger tasks when needed | `make MAX_PAYLOAD=8192` builds a daemon for 8 KiB tasks; 1,002 tasks of 8,000 B fit in 8 MiB, exactly what the formula gives |
-| Small and fast | 32 KB on Linux arm64, no dependencies; 81,900 tasks/s and a 49 µs median on an Apple M4 Pro |
+| Small and fast | 36 KB on Linux arm64 (a Raspberry Pi), no dependencies; 81,900 tasks/s and a 49 µs median on an Apple M4 Pro |
 
 ## Install and run
 
@@ -46,7 +46,7 @@ Website: [quicx.dev](https://quicx.dev). Documentation: [quicx.dev/docs](https:/
 curl -fsSL https://quicx.dev/install.sh | sh
 ```
 
-The script downloads the `quicx` binary for your OS and CPU and puts it in `/usr/local/bin`. To build from source, see [building and tests](#building-and-tests).
+The script downloads the `quicx` binary for your OS and CPU from [Quicx-Releases](https://github.com/Quicx-Engine/Quicx-Releases) and puts it in `/usr/local/bin`. Each version there has a `SHA256SUMS` file to check a download against. To build from source, see [building and tests](#building-and-tests).
 
 ```sh
 quicx start                        # port 16381, 8 MiB
@@ -271,12 +271,14 @@ The next improvement of eviction is machine learning: Quicx learning what a task
 
 ## Using it from code
 
-With the Java client, `dev.quicx:quicx-client` (Maven Central):
+With the Java client, `dev.quicx:quicx-client` ([source](https://github.com/Quicx-Engine/Quicx-Java), Maven Central):
 
 ```java
 // producer
 try (QuicxClient client = new QuicxClient("localhost", 16381)) {
     int taskId = client.submit("send_email", "{\"to\":\"user@example.com\"}");
+    client.submit("frame", "/cam/0/000124.jpg", 12);          // a value level, client and quicxd 2.1.0
+    client.submit("stop", "", QuicxClient.CRITICAL_LEVEL);    // never evicted
 }
 
 // worker
@@ -285,7 +287,7 @@ new QuicxWorker("localhost", 16381)
     .start();
 ```
 
-The Java client sends plain SUBMIT; value levels need QXP directly for now. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body; a payload is at most 1,024 bytes unless the daemon was built with a larger `MAX_PAYLOAD`. A valued task from Python:
+`TaskResult.isEvicted()` tells a producer its task was evicted for a more valuable one. From other languages, speak QXP directly. Each QXP message is a 6-byte header (version 1, type, body length as a big-endian u32) and a body; a payload is at most 1,024 bytes unless the daemon was built with a larger `MAX_PAYLOAD`. A valued task from Python:
 
 ```python
 import socket, struct
@@ -375,6 +377,7 @@ docs/report/scripts/         benchmarks: bench (C load generator), admission, se
 docs/report/results/         raw output of every run
 docs/research/learned-value/ simulation of learned task values
 docs/assets/                 images used in this README
+releases/vX.Y.Z/             make release output (not committed); published to Quicx-Engine/Quicx-Releases with SHA256SUMS
 quicx.conf                   every setting, with its default value
 CHANGELOG.md                 what changed between releases
 ```

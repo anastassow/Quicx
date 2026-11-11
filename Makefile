@@ -145,7 +145,8 @@ mac_arm:
 	-o $(OUT_DIR)/quicx-darwin-arm64 -lpthread
 
 release: release_dir linux_x86 linux_arm mac_x86 mac_arm
-	@echo "✓ Release v$(VERSION) built in $(OUT_DIR)"
+	cd $(OUT_DIR) && { sha256sum quicx-* 2>/dev/null || shasum -a 256 quicx-*; } > SHA256SUMS
+	@echo "✓ Release v$(VERSION) built in $(OUT_DIR), with SHA256SUMS"
 
 clean:
 	rm -f quicxd quicxd-8k test_apool test_config test_wire test_admission bench_apool bench_purge
