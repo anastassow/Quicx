@@ -185,16 +185,14 @@ The orange path in the diagram, in order:
 
 Connections and workers live in a separate control pool of 3 pages. A queue full of tasks can't touch that memory, so a worker can always connect and start draining it.
 
-The daemon is about 3,200 lines of C in `quicx/src` and `quicx/include` (2,183 without blank lines and comments):
+The daemon is about 3,200 lines of C in `src/` (2,183 without blank lines and comments), one folder per part, with every header next to its `.c` file:
 
-- `event_loop.c` waits on every socket with kqueue or epoll, in one thread
-- `protocol.c` reads and writes QXP frames
-- `server.c` accepts connections, checks frames and allocates each task's block
-- `admission.c` decides which waiting task, if any, makes room when the budget is full
-- `daemon.c` handles each message: queue a task, register a worker, forward a result
-- `queue.c`, `dispacher.c` and `workers.c` hold the queue (one FIFO per level), hand tasks to idle workers and track who is idle or busy
-- `apool.c` is the allocator, and `config.c` with `pool_config.c` read `quicx.conf`
-- `stats.c` and `cli.c` are the counters behind `quicx status` and the command line itself
+- `src/net/`: `event_loop.c` waits on every socket with kqueue or epoll, in one thread; `server.c` accepts connections, checks frames and allocates each task's block
+- `src/qxp/`: `protocol.c` reads and writes QXP frames
+- `src/core/`: `daemon.c` handles each message (queue a task, register a worker, forward a result); `queue.c`, `dispatcher.c` and `workers.c` hold the queue (one FIFO per level), hand tasks to idle workers and track who is idle or busy; `admission.c` decides which waiting task, if any, makes room when the budget is full; `quicx.c` ties the pools, queue and workers together; `stats.c` keeps the counters
+- `src/alloc/`: `apool.c` is the allocator
+- `src/config/`: `config.c` and `pool_config.c` read `quicx.conf`
+- `src/cli/`: `cli.c` is the command line, including `quicx status`
 
 ## The allocator
 
@@ -368,9 +366,20 @@ make check-big  # a daemon for 8 KiB payloads, checked against the capacity form
 ## Repository layout
 
 ```
-quicx/include, quicx/src     the daemon
-quicx/src/tests              unit tests and allocator benchmarks
-pmad/                        the allocator of 1.x, the baseline for bench_apool
+src/                         the daemon, one folder per part; each header next to its .c
+  main.c, platform.h           entry point (quicx start | stop | status | version), OS differences
+  net/                         event loop (kqueue/epoll) and the server: sockets, frames, task blocks
+  qxp/                         QXP, the wire protocol
+  core/                        message handling, queue, dispatcher, workers, admission, stats
+  alloc/                       apool, the allocator that keeps the memory budget
+  config/                      quicx.conf parser and the allocator settings
+  cli/                         the command line
+tests/unit/                  C unit tests (make test)
+tests/e2e/                   end-to-end checks against a running daemon (make e2e, make check-big);
+                             qwire.py is the Python QXP client they use
+bench/                       allocator benchmarks (make bench)
+bench/pmad/                  the allocator of 1.x, the baseline bench_apool compares against
+build/                       test and benchmark binaries (make output, not committed)
 docs/README.md               where every number comes from
 docs/report/                 the technical report: LaTeX, scripts, raw results, diagrams
 docs/report/scripts/         benchmarks: bench (C load generator), admission, several, redis

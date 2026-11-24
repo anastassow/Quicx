@@ -28,7 +28,7 @@ rsync -az --delete -e "ssh $SSH_OPTS" \
     --exclude .git --exclude '*.dSYM' \
     --exclude '/docs/report/build/mac' --exclude '/docs/report/build/venv' --exclude '/docs/report/build/look' \
     --exclude '/docs/report/results' --exclude '/docs/report/figures' --exclude '/docs/report/fonts' \
-    --exclude '/quicxd' --exclude '/test_*' --exclude '/bench_apool' \
+    --exclude '/quicxd' --exclude '/build' --exclude '/releases' \
     --exclude '/docs/report/scripts/bench/bench_worker' --exclude '/docs/report/scripts/bench/bench_producer' \
     --exclude '/docs/report/scripts/bench/bench_report' --exclude '/docs/report/scripts/bench/results' \
     "$ROOT/" "$HOST:quicx-report/"

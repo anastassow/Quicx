@@ -54,16 +54,13 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Quicx build outputs (make)
+# Quicx build outputs (make): the daemon at the top, everything else in build/
 /quicxd
-/test_apool
-/test_config
-/test_wire
-/test_admission
-/bench_apool
-/bench_purge
+/build/
 /releases/
 
 # macOS
 .DS_Store
-/quicxd-8k
+
+# Python bytecode (tests/e2e, docs/report/scripts)
+__pycache__/

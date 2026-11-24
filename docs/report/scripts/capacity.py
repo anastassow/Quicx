@@ -17,7 +17,8 @@ import sys
 import threading
 import time
 
-sys.path.insert(0, os.path.dirname(__file__))
+# qwire, the Python QXP client, lives with the end-to-end tests
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "tests", "e2e"))
 from qwire import *  # noqa
 
 daemon_bin, fill_bin, port = sys.argv[1], sys.argv[2], int(sys.argv[3])

@@ -21,12 +21,15 @@ OUT="$REPORT/build/$MACHINE"
 CC=${CC:-cc}
 mkdir -p "$OUT"
 
-INC="-Ipmad/include -Ipmad/include/stuctures -Iquicx/include"
+# the older versions (git archives below) keep the 1.x/2.0 layout: quicx/include, quicx/src, pmad/
+INC_OLD="-Ipmad/include -Ipmad/include/stuctures -Iquicx/include"
+# the current tree: src/<component>/, headers next to their .c files
+INC="-Isrc -Ibench/pmad/include -Ibench/pmad/include/structures"
 COMMON="-std=c17 -D_GNU_SOURCE"
-PMAD_SRC="pmad/src/PMAD.c pmad/src/incPMAD.c pmad/src/MemoryPool.c pmad/src/BlockHeader.c"
-CORE_V2="quicx/src/queue.c quicx/src/workers.c quicx/src/dispacher.c quicx/src/protocol.c
-         quicx/src/event_loop.c quicx/src/server.c quicx/src/daemon.c quicx/src/stats.c
-         quicx/src/cli.c quicx/src/config.c quicx/src/pool_config.c quicx/src/quicx.c quicx/src/apool.c"
+PMAD_SRC="bench/pmad/src/PMAD.c bench/pmad/src/incPMAD.c bench/pmad/src/MemoryPool.c bench/pmad/src/BlockHeader.c"
+CORE_V2="src/alloc/apool.c src/qxp/protocol.c src/net/event_loop.c src/net/server.c
+         src/core/quicx.c src/core/daemon.c src/core/queue.c src/core/dispatcher.c src/core/workers.c
+         src/core/admission.c src/core/stats.c src/config/config.c src/config/pool_config.c src/cli/cli.c"
 
 echo "compiler: $($CC --version | head -1)"
 
@@ -40,29 +43,29 @@ for pair in "v1.0.4:$BASE" "e7d4cdf:$REPORT/build/src-v1"; do
 done
 
 cd "$ROOT"
-$CC $COMMON $INC -O2 quicx/src/main.c $CORE_V2 -o "$OUT/quicxd-v2" -lpthread
+$CC $COMMON $INC -O2 src/main.c $CORE_V2 -o "$OUT/quicxd-v2" -lpthread
 # the same daemon with every allocator feature on (adds fullest-first to the defaults)
-$CC $COMMON $INC -O2 -DQUICX_POOL_FLAGS=APOOL_F_ALL quicx/src/main.c $CORE_V2 -o "$OUT/quicxd-v2-all" -lpthread
-$CC $COMMON $INC -g quicx/src/tests/test_apool.c quicx/src/apool.c -o "$OUT/test_apool"
-$CC $COMMON $INC -g quicx/src/tests/test_wire.c quicx/src/protocol.c -o "$OUT/test_wire"
-$CC $COMMON $INC -g quicx/src/tests/test_config.c quicx/src/config.c quicx/src/pool_config.c quicx/src/apool.c -o "$OUT/test_config"
-$CC $COMMON $INC -O2 quicx/src/tests/bench_apool.c quicx/src/tests/pmad_layout.c quicx/src/apool.c $PMAD_SRC -o "$OUT/bench_apool"
-$CC $COMMON $INC -O2 quicx/src/tests/bench_purge.c quicx/src/apool.c -o "$OUT/bench_purge"
+$CC $COMMON $INC -O2 -DQUICX_POOL_FLAGS=APOOL_F_ALL src/main.c $CORE_V2 -o "$OUT/quicxd-v2-all" -lpthread
+$CC $COMMON $INC -g tests/unit/test_apool.c src/alloc/apool.c -o "$OUT/test_apool"
+$CC $COMMON $INC -g tests/unit/test_wire.c src/qxp/protocol.c -o "$OUT/test_wire"
+$CC $COMMON $INC -g tests/unit/test_config.c src/config/config.c src/config/pool_config.c src/alloc/apool.c -o "$OUT/test_config"
+$CC $COMMON $INC -O2 bench/bench_apool.c bench/pmad_layout.c src/alloc/apool.c $PMAD_SRC -o "$OUT/bench_apool"
+$CC $COMMON $INC -O2 bench/bench_purge.c src/alloc/apool.c -o "$OUT/bench_purge"
 for ps in 4 8 16 32 64; do
     $CC $COMMON $INC -O2 -DAPOOL_PAGE_SIZE=$((ps * 1024)) \
-        quicx/src/tests/bench_apool.c quicx/src/tests/pmad_layout.c quicx/src/apool.c $PMAD_SRC -o "$OUT/bench_apool_ps$ps"
+        bench/bench_apool.c bench/pmad_layout.c src/alloc/apool.c $PMAD_SRC -o "$OUT/bench_apool_ps$ps"
 done
 
 # the baseline: v1.0.4 with its own Makefile's source list, release flags
 cd "$BASE"
 CORE_104=$(make -s -n quicxd 2>/dev/null | tr -s ' \t\\' '\n' | grep -E '^(quicx|pmad)/src/.*\.c$' | tr '\n' ' ')
-$CC $COMMON $INC -O2 $CORE_104 -o "$OUT/quicxd-1.0.4" -lpthread
+$CC $COMMON $INC_OLD -O2 $CORE_104 -o "$OUT/quicxd-1.0.4" -lpthread
 
 # the first adaptive pool (v1, before the papers): commit e7d4cdf, same flags.
 # git archive output is prepared on the Mac in build/src-v1 (the server gets it via rsync)
 cd "$REPORT/build/src-v1"
 CORE_V1=$(make -s -n quicxd 2>/dev/null | tr -s ' \t\\' '\n' | grep -E '^(quicx|pmad)/src/.*\.c$' | tr '\n' ' ')
-$CC $COMMON $INC -O2 $CORE_V1 -o "$OUT/quicxd-v1" -lpthread
+$CC $COMMON $INC_OLD -O2 $CORE_V1 -o "$OUT/quicxd-v1" -lpthread
 
 # bench clients: run.sh builds its own three with scripts/bench/Makefile;
 # fill (capacity client) is built here

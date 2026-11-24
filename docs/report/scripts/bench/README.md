@@ -125,6 +125,10 @@ daemon's own `status` output, and the daemon log.
 
 ## Findings from the first runs
 
+These were found on 1.0.3, and the paths and line numbers below are from that
+version (the files are now `src/qxp/protocol.c` and `src/net/server.c`). All
+three are fixed: 1 and 2 in 1.0.4, 3 in 2.1.0.
+
 **1. Stack buffer overflow in `send_frame_v` — fixed.**
 `quicx/src/protocol.c` declared `struct iovec iov[3]` and then wrote the
 header plus `part_count` more entries. `protocol_send_task` passes

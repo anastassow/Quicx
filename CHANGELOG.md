@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The source tree is organised by part: `src/net`, `src/qxp`, `src/core`, `src/alloc`, `src/config` and `src/cli`, with every header next to its `.c` file and included by its folder (`#include "alloc/apool.h"`, one `-Isrc`). Unit tests are in `tests/unit`, the end-to-end checks and `qwire.py` in `tests/e2e`, the allocator benchmarks and PMAD in `bench/`. The daemon still builds to `./quicxd`; test and benchmark binaries go to `build/`. `dispacher.c` and `try_dispach` are spelled `dispatcher.c` and `try_dispatch`. No behaviour changed: the same 155 unit and 27 end-to-end checks pass.
+
 ## 2.1.0 (2026-11-10)
 
 - `make MAX_PAYLOAD=N` builds a daemon for payloads above 1,024 bytes (a multiple of 16, up to 16,320). The page record now keeps the size class in 16 bits, since such a build has more than 255 sizes; `make check-big` checks an 8 KiB build against the capacity formula.

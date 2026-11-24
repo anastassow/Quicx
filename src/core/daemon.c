@@ -1,0 +1,169 @@
+#include "platform.h"
+
+#include "core/daemon.h"
+#include "qxp/protocol.h"
+#include <stdio.h>
+#include "core/dispatcher.h"
+#include <string.h>
+#include "core/stats.h"
+
+#define TASK_MAX_RETRIES 3
+
+void daemon_handle_message(Connection* conn, Message* msg, Quicx* quicx) {
+    switch (msg->type) {
+
+        case MSG_SUBMIT: {
+            /* the server already allocated the task's block, payload inside */
+            Task* t = (Task*)msg->as.submit.block;
+
+            t->id               = queue_next_id(&quicx->queue);
+            t->status           = TASK_WAITING;
+            t->retries_left     = TASK_MAX_RETRIES;
+            t->next             = NULL;
+            t->payload          = msg->as.submit.payload;
+            t->payload_len      = msg->as.submit.payload_len;
+            t->level            = msg->as.submit.level;
+
+            strncpy(t->type, msg->as.submit.task_type, MAX_TASK_TYPE_SIZE - 1);
+            t->type[MAX_TASK_TYPE_SIZE - 1] = '\0';
+
+            t->producer_fd = conn->fd;
+
+            queue_push(&quicx->queue, t);
+            conn->type = CONN_PRODUCER;
+            protocol_send_ok(conn->fd, t->id);
+            stats_task_submitted(&quicx->stats);
+            try_dispatch(quicx);
+
+            break;
+        }
+
+        case MSG_READY: {
+
+            Worker* w = worker_add(&quicx->pool, &quicx->ctrl, conn->fd);
+            if(!w) {
+                protocol_send_error(conn->fd, ERR_QUEUE_FULL, "worker pool full");
+                return;
+            }
+
+            conn->as.worker.worker = w;
+            conn->type = CONN_WORKER;
+            try_dispatch(quicx);
+
+            break;
+        }
+
+        case MSG_DONE: {
+
+            if (conn->as.worker.worker) {
+                if (conn->as.worker.worker->current_fd >= 0)
+                    protocol_send_done(conn->as.worker.worker->current_fd, msg->as.done.task_id);
+                worker_set_idle(&quicx->pool, conn->as.worker.worker);
+                conn->as.worker.worker->current_fd = -1;
+            }
+            stats_task_completed(&quicx->stats);
+            try_dispatch(quicx);
+
+            break;
+        }
+
+        case MSG_FAILED: {
+
+            if (conn->as.worker.worker) {
+                if (conn->as.worker.worker->current_fd >= 0)
+                    protocol_send_failed(conn->as.worker.worker->current_fd, msg->as.failed.task_id, msg->as.failed.reason);
+                conn->as.worker.worker->current_fd = -1;
+                worker_set_idle(&quicx->pool, conn->as.worker.worker);
+            }
+            stats_task_failed(&quicx->stats);
+            try_dispatch(quicx);
+
+            break;
+        }
+
+        case MSG_HEARTBEAT: {
+            protocol_send_pong(conn->fd);
+
+            break;
+        }
+
+        case MSG_STATS: {
+            Stats* s = &quicx->stats;
+
+            Apool* mem = &quicx->mem;
+
+            /* only sizes that own pages right now — the list changes as traffic does */
+            StatsClass sc[APOOL_NUM_CLASSES];
+            int n = 0;
+            uint32_t owned_pages = 0;
+            for (int c = 0; c < APOOL_NUM_CLASSES; c++) {
+                const ApoolClass* k = &mem->classes[c];
+                if (k->pages == 0) continue;
+                owned_pages += k->pages;
+                if (n == 255) continue;   /* class_count is one byte; a big MAX_PAYLOAD build can have more sizes in use */
+                uint32_t per_page = (uint32_t)(APOOL_PAGE_SIZE / apool_class_size(c));
+                sc[n].block_size       = htonl((uint32_t)apool_class_size(c));
+                sc[n].total_blocks     = htonl(k->pages * per_page);
+                sc[n].allocated_blocks = htonl((uint32_t)k->live);
+                n++;
+            }
+
+            StatsHeader hdr;
+            hdr.idle_workers       = htonl((uint32_t)workers_idle_count(&quicx->pool));
+            hdr.busy_workers       = htonl((uint32_t)workers_busy_count(&quicx->pool));
+            hdr.queued_tasks       = htonl((uint32_t)queue_size(&quicx->queue));
+            hdr.workers_registered = htonl(quicx->pool.next_id - 1);
+            hdr.tasks_submitted    = htonll(s->tasks_submitted);
+            hdr.tasks_completed    = htonll(s->tasks_completed);
+            hdr.tasks_failed       = htonll(s->tasks_failed);
+            hdr.uptime_seconds     = htonll((uint64_t)(time(NULL) - s->start_time));
+            hdr.pool_size          = htonll((uint64_t)mem->map_size);
+            /* usable = all pages; used = pages currently given to some size */
+            hdr.usable_bytes       = htonll((uint64_t)mem->num_pages * APOOL_PAGE_SIZE);
+            hdr.used_bytes         = htonll((uint64_t)owned_pages * APOOL_PAGE_SIZE);
+            hdr.tasks_evicted      = htonll(s->tasks_evicted);
+            hdr.class_count        = (uint8_t)n;
+
+            protocol_send_stats_response(conn->fd,
+                               &hdr,
+                               (uint32_t)sizeof(hdr),
+                               sc,
+                               (uint32_t)(n * sizeof(StatsClass)));
+            
+            break;
+        }
+
+        default:{
+            protocol_send_error(conn->fd,
+                                ERR_UNKNOWN_TYPE,
+                                "unknown type");
+            break;
+        }
+    }
+}
+
+/* a producer's connection closed: its fd may be reused by the next client */
+static void forget_producer(void* ctx, Task* t) {
+    int fd = *(const int*)ctx;
+    if (t->producer_fd == fd) t->producer_fd = -1;
+}
+
+void daemon_handle_disconnect(Connection* conn, Quicx* quicx) {
+
+    /*
+    results and eviction notices go to the producer's fd. once that fd is
+    closed the OS can hand the number to a new connection, so stop pointing
+    at it: from waiting tasks, and from workers running this producer's task
+    */
+    if (conn->type != CONN_CLI) {
+        int fd = conn->fd;
+        queue_for_each(&quicx->queue, forget_producer, &fd);
+        for (Worker* w = quicx->pool.busy_head; w; w = w->next)
+            if (w->current_fd == fd) w->current_fd = -1;
+    }
+
+    if (conn->type == CONN_WORKER && conn->as.worker.worker) {
+        worker_remove(&quicx->pool, &quicx->ctrl, conn->as.worker.worker);
+        conn->as.worker.worker = NULL;
+    }
+}
