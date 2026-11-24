@@ -13,6 +13,7 @@ set -uo pipefail
 MACHINE=${1:?usage: run_all.sh MACHINE}
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPORT="$(cd "$HERE/.." && pwd)"
+E2E="$(cd "$REPORT/../../tests/e2e" && pwd)"   # e2e_tests.py lives with the tests
 B="$REPORT/build/$MACHINE"
 R="$REPORT/results/$MACHINE"
 REPS=${REPS:-5}
@@ -58,12 +59,12 @@ log "machine info written"
 
 # ---- end-to-end tests --------------------------------------------------
 for v in "${VERSIONS[@]}"; do
-    python3 "$HERE/e2e_tests.py" "$B/quicxd-$v" "$PORT" > "$R/e2e_$v.txt" 2>&1
+    python3 "$E2E/e2e_tests.py" "$B/quicxd-$v" "$PORT" > "$R/e2e_$v.txt" 2>&1
     log "e2e $v: $(tail -1 "$R/e2e_$v.txt")"
 done
 
 # every allocator feature on together (fullest-first added to the defaults)
-python3 "$HERE/e2e_tests.py" "$B/quicxd-v2-all" "$PORT" > "$R/e2e_v2-all.txt" 2>&1
+python3 "$E2E/e2e_tests.py" "$B/quicxd-v2-all" "$PORT" > "$R/e2e_v2-all.txt" 2>&1
 log "e2e v2-all: $(tail -1 "$R/e2e_v2-all.txt")"
 for i in 1 2 3; do
     python3 "$HERE/capacity.py" "$B/quicxd-v2-all" "$B/fill" "$PORT" 100 900 40 300 nginx \

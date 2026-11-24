@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc make libc6-
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY Makefile quicx.conf ./
-COPY quicx ./quicx
+COPY src ./src
 RUN make quicxd
 
 FROM ubuntu:24.04

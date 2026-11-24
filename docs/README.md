@@ -13,8 +13,8 @@ Each claim in the README, the website and the report comes from a script in this
 | several daemons: 1.92x on two cores, an even split on one machine | `docs/report/scripts/several/run_several.sh`, `run_remote.sh` | `docs/report/results/several` |
 | Quicx and Redis in 64 MB containers, and at the same limit | `docs/report/scripts/redis/run.sh` | `docs/report/results/redis` |
 | learned task values (66.7 % against 27.7 % of diseased frames) | `docs/research/learned-value/learned_value_sim.py` | `docs/research/learned-value/results` |
-| bigger payloads: 1,002 tasks of 8,000 B in 8 MiB, as the formula says | `make check-big` (`docs/report/scripts/big_payload_check.py`) | the output of the run |
-| unit checks (155) | `make test` | the output of the run |
-| end-to-end checks (27) | `make e2e` (`docs/report/scripts/e2e_tests.py`) | `docs/report/results/*/e2e_*` |
+| bigger payloads: 1,002 tasks of 8,000 B in 8 MiB, as the formula says | `make check-big` (`tests/e2e/big_payload_check.py`) | the output of the run |
+| unit checks (155) | `make test` (`tests/unit/`) | the output of the run |
+| end-to-end checks (27) | `make e2e` (`tests/e2e/e2e_tests.py`) | `docs/report/results/*/e2e_*` |
 
 The machines: an Apple M4 Pro (12 cores, macOS 26.5) and an Intel Core i3-2100 from 2011 (2 cores, 4 threads, Ubuntu 24.04). [`report/README.md`](report/README.md) explains how to rebuild the whole report, and [`report/FINDINGS.md`](report/FINDINGS.md) lists what the runs found.

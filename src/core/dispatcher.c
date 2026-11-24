@@ -1,0 +1,27 @@
+#include "core/dispatcher.h"
+#include <string.h>
+#include <unistd.h>
+#include "qxp/protocol.h"
+
+void try_dispatch(Quicx* quicx) {
+    while (1) {
+        Worker* w = worker_get_idle(&quicx->pool);
+        if (!w) return;
+
+        Task* t = queue_pop(&quicx->queue);
+        if (!t) {
+            worker_return_idle(&quicx->pool, w);
+
+            return;
+        }
+
+        worker_set_busy(&quicx->pool, w);
+
+        w->current_fd = t->producer_fd;
+
+        protocol_send_task(w->fd, t->id, t->type, t->payload, t->payload_len);
+
+        apool_free(&quicx->mem, t);   /* the payload lives in the same block */
+    }
+
+}

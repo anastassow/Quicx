@@ -15,8 +15,8 @@ Repro:
 ```
 cd docs/report
 scripts/build.sh mac
-python3 scripts/e2e_tests.py build/mac/quicxd-1.0.4 16391    # liveness-16 and liveness-32 FAIL
-python3 scripts/e2e_tests.py build/mac/quicxd-v2 16391       # all 27 PASS
+python3 ../../tests/e2e/e2e_tests.py build/mac/quicxd-1.0.4 16391    # liveness-16 and liveness-32 FAIL
+python3 ../../tests/e2e/e2e_tests.py build/mac/quicxd-v2 16391       # all 27 PASS
 ```
 Raw output: `results/mac/e2e_1.0.4.txt`, `results/server/e2e_1.0.4.txt`. Fix for a 1.0.5: give Connections and Workers their own pool (as v2 does), or keep a few PMAD blocks of 16 B and 32 B for them.
 
@@ -52,7 +52,7 @@ p99.9 ranged from 129 to 4,470 µs on the Mac and from 137 to 4,296 µs on the s
 
 ## 9. The adaptive-pool branch said v1.0.3 (fixed)
 
-During the runs `quicxd-v2 version` printed `quicx v1.0.3`, because the branch was made before the 1.0.4 bump. `VERSION` in `quicx/include/cli.h` is 2.0.0 now.
+During the runs `quicxd-v2 version` printed `quicx v1.0.3`, because the branch was made before the 1.0.4 bump. `VERSION` in `quicx/include/cli.h` (now `src/cli/cli.h`) was set to 2.0.0.
 
 ## 10. Hardening costs much more on an older CPU (new, from the server)
 

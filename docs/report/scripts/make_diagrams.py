@@ -359,7 +359,7 @@ def quicx(pal):
         if i < 2:
             c.arrow([(bx + 52, qy + 15), (bx + 68, qy + 15)], sw=1.4)
     c.text(xs[2] + 16, qy + 50, "a FIFO per value level", size=14.5, within=c.boxes["queue"])
-    c.tile(xs[3], Y, W, H, "send", "Dispatcher", "[dispacher.c]",
+    c.tile(xs[3], Y, W, H, "send", "Dispatcher", "[dispatcher.c]",
            ["highest level first,", "oldest within a level"], key="disp")
 
     # ---- second row: state the daemon keeps
@@ -485,7 +485,7 @@ def quicx(pal):
 def apool(pal):
     c = Canvas(pal)
     c.header("apool v2 · Allocator diagram",
-             "Scope: one pool (the task pool, 8 MiB) · quicx/src/apool.c, 341 lines of C",
+             "Scope: one pool (the task pool, 8 MiB) · src/alloc/apool.c, 370 lines of C",
              "adaptive-pool · Nov 2026")
 
     # ---- 1. the mapping ------------------------------------------------
